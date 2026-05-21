@@ -1,0 +1,208 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --background: #050505;
+  --foreground: #f4f4f5;
+  --primary: #ffffff;
+  --primary-glow: rgba(255, 255, 255, 0.1);
+  
+  --font-outfit: 'Outfit', sans-serif;
+  --font-space: 'Space Grotesk', sans-serif;
+  --font-playfair: 'Playfair Display', serif;
+}
+
+@theme {
+  --font-sans: var(--font-outfit);
+  --font-mono: var(--font-space);
+  --font-serif: var(--font-playfair);
+  
+  --color-dark-bg: #050505;
+  --color-card-dark: rgba(255, 255, 255, 0.03);
+  --color-border-dark: rgba(255, 255, 255, 0.06);
+}
+
+/* Base Body Styles - Sleek, Stark, Professional Monochrome */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-outfit);
+  overflow-x: hidden;
+  /* Ultra-subtle monochrome layout grid */
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 80%);
+  background-attachment: fixed;
+}
+
+/* Minimalist Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* 3D Scene Perspective Utilities */
+.perspective-1000 {
+  perspective: 1500px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Premium Card Template Styles (Stark Monochromatic Redesigns) */
+
+/* 1. Minimalist Sans: Glassmorphic editorial aesthetic */
+.template-minimalist-bg {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 2. Technical Grid: Architectural, fine coordinates, grid lines */
+.template-cyberpunk-bg {
+  background: #09090b;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.template-cyberpunk-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 12px 12px;
+  pointer-events: none;
+}
+
+/* 3. Modernist Serif: Editorial corporate elegance, stark border frame */
+.template-classic-bg {
+  background: #0f0f11;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  position: relative;
+}
+
+.template-classic-bg::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  pointer-events: none;
+  border-radius: 12px;
+}
+
+/* 4. Bold Monospace: Heavy boundaries, high contrast, clean blocks */
+.template-retro-bg {
+  background: #000000;
+  border: 2px solid #ffffff;
+  position: relative;
+}
+
+.template-retro-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background: #ffffff;
+  pointer-events: none;
+}
+
+/* Holographic Shiny Overlay (Highly desaturated, premium titanium metallic shimmer) */
+.shiny-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.05) 45%,
+    rgba(255, 255, 255, 0.12) 50%,
+    rgba(255, 255, 255, 0.05) 55%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+  pointer-events: none;
+}
+
+.card-hover-trigger:hover .shiny-overlay {
+  transform: translateX(100%);
+}
+
+/* Signature Pad Drawing Area */
+.sig-canvas {
+  touch-action: none;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: crosshair;
+}
+
+/* Monochrome Premium Panels */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.02);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.5);
+}
+
+.glass-input {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #fff;
+  transition: all 0.25s ease-in-out;
+}
+
+.glass-input:focus {
+  background: rgba(0, 0, 0, 0.6);
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+.glass-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* Technical pulse animation in monochrome */
+@keyframes monoGlow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.05), 0 0 10px rgba(255, 255, 255, 0.02);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.15), 0 0 20px rgba(255, 255, 255, 0.05);
+  }
+}
+
+.glow-cyberpunk {
+  animation: monoGlow 3s infinite ease-in-out;
+}
