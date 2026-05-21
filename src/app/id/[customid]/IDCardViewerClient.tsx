@@ -27,6 +27,163 @@ interface IDCardViewerClientProps {
 
 const PORTRAIT_TEMPLATES = ['cbse-portrait', 'saffron-portrait', 'green-portrait'];
 
+// Replace modern CSS color functions that html2canvas cannot parse with fallback legacy colors
+function replaceModernColors(css: string): string {
+  let output = css;
+  
+  // Find all instances of color-mix(in oklab, ... ) or color-mix(in oklch, ... )
+  const targets = ['color-mix(in oklab,', 'color-mix(in oklch,', 'color-mix('];
+  for (const target of targets) {
+    let index = output.indexOf(target);
+    while (index !== -1) {
+      let parenCount = 1;
+      let i = index + target.length;
+      while (i < output.length && parenCount > 0) {
+        if (output[i] === '(') {
+          parenCount++;
+        } else if (output[i] === ')') {
+          parenCount--;
+        }
+        i++;
+      }
+      
+      if (parenCount === 0) {
+        const fullMatch = output.substring(index, i);
+        let fallback = 'rgba(255, 255, 255, 0.2)'; // Safe default
+        
+        // Extract color variable name and percentage to create accurate rgba fallback
+        const match = fullMatch.match(/var\(--color-([a-z0-9-]+)\)\s+(\d+)%/i) || 
+                      fullMatch.match(/#([a-f0-9]{3,8})\s+(\d+)%/i) ||
+                      fullMatch.match(/(white|black|transparent)\s+(\d+)%/i);
+                      
+        if (match) {
+          const colorName = match[1].toLowerCase();
+          const percentage = parseInt(match[2], 10);
+          const opacity = percentage / 100;
+          
+          if (colorName === 'white' || colorName === 'fff' || colorName === 'ffffff') {
+            fallback = `rgba(255, 255, 255, ${opacity})`;
+          } else if (colorName === 'black' || colorName === '000' || colorName === '000000') {
+            fallback = `rgba(0, 0, 0, ${opacity})`;
+          } else if (colorName.includes('orange') || colorName.includes('saffron')) {
+            fallback = `rgba(255, 153, 51, ${opacity})`; // Saffron orange
+          } else if (colorName.includes('green') || colorName.includes('emerald')) {
+            fallback = `rgba(19, 136, 8, ${opacity})`; // Indian green
+          } else if (colorName.includes('blue') || colorName.includes('navy') || colorName.includes('zinc') || colorName.includes('gray')) {
+            fallback = `rgba(100, 116, 139, ${opacity})`;
+          } else {
+            fallback = `rgba(128, 128, 128, ${opacity})`;
+          }
+        } else {
+          // Check if there is at least a percentage in the string
+          const percentMatch = fullMatch.match(/(\d+)%/);
+          if (percentMatch) {
+            const opacity = parseInt(percentMatch[1], 10) / 100;
+            if (fullMatch.toLowerCase().includes('white') || fullMatch.toLowerCase().includes('fff')) {
+              fallback = `rgba(255, 255, 255, ${opacity})`;
+            } else {
+              fallback = `rgba(128, 128, 128, ${opacity})`;
+            }
+          }
+        }
+        
+        output = output.substring(0, index) + fallback + output.substring(i);
+        index = output.indexOf(target, index + fallback.length);
+      } else {
+        break;
+      }
+    }
+  }
+  
+  // Also replace any oklab(L A B) color expressions to avoid unsupported color function errors
+  let oklabIndex = output.indexOf('oklab(');
+  while (oklabIndex !== -1) {
+    let parenCount = 1;
+    let i = oklabIndex + 6;
+    while (i < output.length && parenCount > 0) {
+      if (output[i] === '(') parenCount++;
+      else if (output[i] === ')') parenCount--;
+      i++;
+    }
+    if (parenCount === 0) {
+      const fallback = '#888888';
+      output = output.substring(0, oklabIndex) + fallback + output.substring(i);
+      oklabIndex = output.indexOf('oklab(', oklabIndex + fallback.length);
+    } else {
+      break;
+    }
+  }
+  
+  return output;
+}
+
+// Temporary stylesheet sanitizer to prevent html2canvas parsing errors
+async function sanitizeStylesheets(): Promise<() => void> {
+  const restores: (() => void)[] = [];
+  
+  if (typeof window === 'undefined') return () => {};
+
+  // 1. Sanitize inline <style> elements
+  const styleElements = Array.from(document.querySelectorAll('style'));
+  for (const style of styleElements) {
+    const originalText = style.textContent || '';
+    if (
+      originalText.includes('oklch') || 
+      originalText.includes('oklab') || 
+      originalText.includes('color-mix') || 
+      originalText.includes('light-dark')
+    ) {
+      const sanitizedText = replaceModernColors(originalText);
+      style.textContent = sanitizedText;
+      restores.push(() => {
+        style.textContent = originalText;
+      });
+    }
+  }
+
+  // 2. Sanitize local <link rel="stylesheet"> elements
+  const linkElements = Array.from(document.querySelectorAll('link[rel="stylesheet"]')) as HTMLLinkElement[];
+  for (const link of linkElements) {
+    try {
+      const url = new URL(link.href, window.location.origin);
+      if (url.origin === window.location.origin) {
+        const response = await fetch(link.href);
+        const cssText = await response.text();
+        if (
+          cssText.includes('oklch') || 
+          cssText.includes('oklab') || 
+          cssText.includes('color-mix') || 
+          cssText.includes('light-dark')
+        ) {
+          const sanitizedText = replaceModernColors(cssText);
+          
+          const tempStyle = document.createElement('style');
+          tempStyle.textContent = sanitizedText;
+          document.head.appendChild(tempStyle);
+          
+          const originalDisabled = link.disabled;
+          link.disabled = true;
+          
+          restores.push(() => {
+            if (tempStyle.parentNode) {
+              tempStyle.parentNode.removeChild(tempStyle);
+            }
+            link.disabled = originalDisabled;
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to sanitize stylesheet link:', link.href, e);
+    }
+  }
+
+  return () => {
+    for (let i = restores.length - 1; i >= 0; i--) {
+      restores[i]();
+    }
+  };
+}
+
 export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerClientProps) {
   const [copied, setCopied] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -73,16 +230,21 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
 
   // Capture an IDCardFace ref element via html2canvas
   const captureElement = async (element: HTMLDivElement) => {
-    const html2canvas = (await import('html2canvas-pro')).default;
-    return html2canvas(element, {
-      scale: 4,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: true,
-      width: cardW,
-      height: cardH,
-    });
+    const restoreStyles = await sanitizeStylesheets();
+    try {
+      const html2canvas = (await import('html2canvas-pro')).default;
+      return await html2canvas(element, {
+        scale: 4,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: true,
+        width: cardW,
+        height: cardH,
+      });
+    } finally {
+      restoreStyles();
+    }
   };
 
   // Download PNG (front or back)
