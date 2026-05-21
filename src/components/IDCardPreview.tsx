@@ -16,7 +16,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
   const [qrUrl, setQrUrl] = useState<string>('');
-  const cardRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   // Sync external flip overrides (e.g. from export functions)
   useEffect(() => {
@@ -49,9 +49,8 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
 
   // Handle 3D Mouse Tilt Effect
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const card = cardRef.current;
-    const rect = card.getBoundingClientRect();
+    if (!wrapperRef.current) return;
+    const rect = wrapperRef.current.getBoundingClientRect();
     
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -59,10 +58,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
     const px = x / rect.width - 0.5;
     const py = y / rect.height - 0.5;
     
-    const tiltX = -py * 20;
-    const tiltY = px * 20;
-    
-    setTilt({ x: tiltX, y: tiltY });
+    setTilt({ x: -py * 12, y: px * 12 });
   };
 
   const handleMouseLeave = () => {
@@ -133,40 +129,49 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
 
   return (
     <div style={cardThemeStyles} className="w-full flex flex-col items-center select-none font-mono">
-      {/* 3D Scene viewport */}
-      <div 
-        className={`w-full perspective-1000 cursor-pointer card-hover-trigger relative group ${
-          isPortrait ? 'max-w-[270px] aspect-[1/1.586]' : 'max-w-[428px] aspect-[1.586/1]'
+
+      {/* Outer wrapper: fixed size + perspective only — never transformed */}
+      <div
+        ref={wrapperRef}
+        className={`relative cursor-pointer group ${
+          isPortrait ? 'w-[270px] aspect-[1/1.586]' : 'w-[428px] aspect-[1.586/1]'
         }`}
+        style={{ perspective: '1000px' }}
         onClick={toggleFlip}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={handleMouseLeave}
       >
         {/* Hover Tip */}
-        <div className="absolute -top-7 right-4 flex items-center gap-1.5 text-[8.5px] text-zinc-400 bg-black border border-zinc-850 px-2.5 py-1 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-          <RefreshCw className="w-3 h-3 text-zinc-400 animate-spin-slow" />
-          <span>Click to Flip Card</span>
+        <div className="absolute -top-7 right-4 z-50 flex items-center gap-1.5 text-[8.5px] text-zinc-400 bg-black border border-zinc-800 px-2.5 py-1 uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+          <RefreshCw className="w-3 h-3 text-zinc-400" />
+          <span>Click to Flip</span>
         </div>
 
-        {/* 3D Card Container */}
+        {/* Tilt layer: full size, handles mouse tilt only */}
         <div
-          ref={cardRef}
-          className="w-full h-full relative preserve-3d transition-transform duration-700 ease-out shadow-[0_30px_60px_rgba(0,0,0,0.8)]"
+          className="w-full h-full"
           style={{
-            transform: `rotateX(${tilt.x}deg) rotateY(${isFlipped ? 180 - tilt.y : tilt.y}deg)`,
-            transition: isHovering ? 'none' : 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)'
+            transformStyle: 'preserve-3d',
+            transform: isHovering
+              ? `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`
+              : 'rotateX(0deg) rotateY(0deg)',
+            transition: isHovering ? 'none' : 'transform 0.5s ease-out',
           }}
         >
-          {/* A. CARD FRONT SIDE */}
-          <div 
-            className={`absolute top-0 left-0 w-full h-full backface-hidden p-5 overflow-hidden flex flex-col justify-between ${theme.card}`}
-            style={{ 
-              transform: 'rotateY(0deg) translateZ(1px)', 
-              zIndex: isFlipped ? 0 : 20, 
-              opacity: isFlipped ? 0 : 1,
-              transition: 'opacity 0.6s, z-index 0.6s'
+          {/* Flip layer: full size, handles flip only */}
+          <div
+            className="w-full h-full relative"
+            style={{
+              transformStyle: 'preserve-3d',
+              transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+              transition: 'transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)',
             }}
+          >
+          {/* A. CARD FRONT SIDE */}
+          <div
+            className={`absolute inset-0 p-5 overflow-hidden flex flex-col justify-between ${theme.card} shadow-[0_20px_50px_rgba(0,0,0,0.7)]`}
+            style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
           >
             {/* Fine Shimmer Overlay */}
             <div className="shiny-overlay" />
@@ -281,13 +286,12 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
           </div>
 
           {/* B. CARD BACK SIDE */}
-          <div 
-            className={`absolute top-0 left-0 w-full h-full backface-hidden p-5 overflow-hidden flex flex-col justify-between rotate-y-180 ${theme.card}`}
-            style={{ 
-              transform: 'rotateY(180deg) translateZ(1px)', 
-              zIndex: isFlipped ? 20 : 0, 
-              opacity: isFlipped ? 1 : 0,
-              transition: 'opacity 0.6s, z-index 0.6s'
+          <div
+            className={`absolute inset-0 p-5 overflow-hidden flex flex-col justify-between ${theme.card} shadow-[0_20px_50px_rgba(0,0,0,0.7)]`}
+            style={{
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              transform: 'rotateY(180deg)',
             }}
           >
             {/* Fine Shimmer Overlay */}
@@ -412,10 +416,11 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
               )}
             </div>
           </div>
+          </div>
         </div>
       </div>
       
-      {/* Visual Workspace Controls */}
+      {/* Controls */}
       <div className="mt-4 flex items-center gap-3">
         <button
           type="button"
@@ -423,10 +428,10 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
           className="py-1.5 px-3 border border-zinc-800 hover:border-zinc-600 bg-black text-[9px] font-bold uppercase tracking-wider text-zinc-400 hover:text-white flex items-center gap-1.5 cursor-pointer transition-all"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          <span>FLIP CREDENTIAL CARD</span>
+          <span>Flip Card</span>
         </button>
         <span className="text-[9px] text-zinc-600 tracking-wider">
-          CR80 SCALE PREVIEW • ROTATE: 3D_MOUSE_TILT
+          CR80 Preview • Tilt on Hover
         </span>
       </div>
     </div>

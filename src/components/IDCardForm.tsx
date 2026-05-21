@@ -214,11 +214,11 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
   return (
     <div className="w-full flex flex-col gap-6 font-mono text-[11px]">
       
-      {/* A. PHYSICAL GRID SPECIFICATIONS */}
+      {/* A. Orientation */}
       <div className="flex flex-col gap-2">
         <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
           <Sliders className="w-3.5 h-3.5" />
-          CARD.ORIENTATION_METRIC
+          Orientation
         </label>
         <div className="grid grid-cols-2 gap-0 border border-zinc-800">
           {(['landscape', 'portrait'] as const).map((o) => (
@@ -238,11 +238,11 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
       </div>
 
-      {/* B. CURATED WORKSPACE THEMES */}
+      {/* B. Template */}
       <div className="flex flex-col gap-2">
         <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
           <Palette className="w-3.5 h-3.5" />
-          CARD.DESIGN_SCHEMATIC
+          Template
         </label>
         <div className="grid grid-cols-3 gap-0 border border-zinc-800">
           {(['atelier', 'system-7', 'bespoke'] as const).map((t) => (
@@ -262,11 +262,11 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
       </div>
 
-      {/* C. MONOCHROMATIC ACCENT SELECTOR */}
+      {/* C. Accent Color */}
       {value.template === 'atelier' && (
         <div className="flex flex-col gap-2 border border-zinc-800 p-4 bg-black">
           <label className="text-[9.5px] font-bold tracking-widest text-zinc-500 uppercase">
-            ATELIER.ACCENT_TONE
+            Accent Color
           </label>
           <div className="flex flex-wrap items-center gap-3 mt-1.5">
             {PRESET_COLORS.map((c) => (
@@ -297,11 +297,11 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
       )}
 
-      {/* D. VISUAL CREDENTIAL (AVATAR) */}
+      {/* D. Photo */}
       <div className="flex flex-col gap-2 border border-zinc-800 p-4 bg-black">
         <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
           <ImageIcon className="w-3.5 h-3.5" />
-          VISUAL.AVATAR_PLATE
+          Photo
         </label>
         
         <div className="flex flex-col sm:flex-row gap-4 items-center mt-1">
@@ -350,9 +350,9 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
             />
           </div>
 
-          {/* Local SVG illustration catalog */}
+          {/* Preset avatars */}
           <div className="flex-1 flex flex-col gap-2 w-full">
-            <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Or select vector system schematic:</span>
+            <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Or choose a preset avatar:</span>
             <div className="flex items-center gap-2">
               {PRESET_AVATARS.map((av) => (
                 <button
@@ -371,17 +371,17 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
             </div>
             {photoError && <p className="text-[9px] text-rose-500 font-bold mt-1">{photoError}</p>}
             <p className="text-[8px] text-zinc-600 leading-normal max-w-sm mt-1">
-              * Local vectors guarantee high-DPI canvas integrity with zero CORS taint and absolute offline rendering support.
+              Preset avatars work offline and render crisply at any resolution.
             </p>
           </div>
         </div>
       </div>
 
-      {/* E. FIELD DIALS */}
+      {/* E. Fields */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         
         <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">FIELD.FULL_NAME</label>
+          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Full Name</label>
           <input
             type="text"
             name="name"
@@ -394,7 +394,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">FIELD.CREDENTIAL_ID</label>
+          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Student ID</label>
           <input
             type="text"
             name="idNumber"
@@ -407,7 +407,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">FIELD.INSTITUTION</label>
+          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Institution</label>
           <input
             type="text"
             name="school"
@@ -420,7 +420,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">FIELD.CLASS_GRADE</label>
+          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Class / Section</label>
           <input
             type="text"
             name="grade"
@@ -433,7 +433,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">FIELD.CREDENTIAL_ROLE</label>
+          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Role</label>
           <select
             name="role"
             value={value.role}
@@ -450,7 +450,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
 
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">DATE.ISSUE</label>
+            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Issue Date</label>
             <input
               type="text"
               name="issueDate"
@@ -461,7 +461,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">DATE.EXPIRY</label>
+            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Expiry Date</label>
             <input
               type="text"
               name="expiryDate"
@@ -474,7 +474,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">FIELD.EMAIL</label>
+          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Email</label>
           <input
             type="email"
             name="email"
@@ -487,7 +487,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
 
         <div className="grid grid-cols-2 gap-2">
           <div className="flex flex-col gap-1.5">
-            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">FIELD.PHONE</label>
+            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Phone</label>
             <input
               type="text"
               name="phone"
@@ -498,7 +498,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">FIELD.BLOOD_GROUP</label>
+            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Blood Group</label>
             <input
               type="text"
               name="bloodGroup"
@@ -511,12 +511,12 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
         </div>
       </div>
 
-      {/* F. DRAW AUTHORITY SIGNATURE TERMINAL */}
+      {/* F. Signature */}
       <div className="flex flex-col gap-2 border border-zinc-800 p-4 bg-black mt-2">
         <div className="flex items-center justify-between">
           <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
             <Edit3 className="w-3.5 h-3.5" />
-            SIGNATURE.AUTHORITY_PAD
+            Signature
           </label>
           <button
             type="button"
@@ -524,7 +524,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
             className="text-[9px] font-bold uppercase tracking-wider text-rose-500 hover:text-rose-400 transition-colors flex items-center gap-1 cursor-pointer"
           >
             <Trash2 className="w-3 h-3" />
-            [RESET.PAD]
+            Clear
           </button>
         </div>
         <div className="relative w-full overflow-hidden border border-zinc-800 bg-[#040404]">
@@ -542,19 +542,19 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
             className="w-full h-24 sig-canvas"
           />
           <div className="absolute bottom-1 right-2 pointer-events-none text-[7px] text-zinc-650 font-bold uppercase tracking-widest select-none">
-            [DRAWN SIGNATURE AREA]
+            Draw here
           </div>
         </div>
       </div>
 
-      {/* G. WORKSPACE GENERATE ACTION */}
+      {/* G. Generate */}
       <button
         type="button"
         onClick={onSubmit}
         className="w-full mt-4 py-4 px-6 bg-white hover:bg-zinc-200 text-black font-black text-xs uppercase tracking-widest transition-all cursor-pointer border border-white rounded-none flex items-center justify-center gap-2"
       >
         <Shield className="w-4 h-4" />
-        <span>COMPILE_CREDENTIAL_URL</span>
+        <span>Generate ID Card</span>
       </button>
     </div>
   );
