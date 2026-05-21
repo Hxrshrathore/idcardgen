@@ -1157,13 +1157,6 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
     }
   };
 
-  // ─── FLAT FACE RENDER (used by IDCardFace named export) ─────
-  const renderFlatFace = (side: 'front' | 'back') => {
-    if (side === 'front') return renderFront();
-    return renderBack();
-  };
-
-  // Expose renderFlatFace for parent via ref-like pattern (not needed here — see IDCardFace below)
 
   // ─── WRAPPER + 3D FLIP ─────────────────────────────────────
   return (
