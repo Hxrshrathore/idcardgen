@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
 import { StudentData } from '@/utils/compressor';
-import IDCardPreview from '@/components/IDCardPreview';
+import IDCardPreview, { IDCardFace } from '@/components/IDCardPreview';
 import Link from 'next/link';
 import confetti from 'canvas-confetti';
 import QRCode from 'qrcode';
@@ -115,43 +115,39 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
     setIsExporting(true);
     try {
       const element = side === 'front' ? flatFrontRef.current : flatBackRef.current;
-      if (!element) return;
+      if (!element) {
+        console.error('Export element not found');
+        return;
+      }
 
       const html2canvas = (await import('html2canvas')).default;
 
-      const parent = element.parentElement;
-      const originalStyle = element.style.cssText;
-
-      // Move element to document.body temporarily to allow proper 0,0 page context rendering
-      element.style.cssText = 'position: fixed; left: 0px; top: 0px; z-index: -99999; visibility: visible; opacity: 1; pointer-events: none;';
-      document.body.appendChild(element);
-
-      const isPortrait = data.orientation === 'portrait';
+      const isPortrait = ['cbse-portrait', 'saffron-portrait', 'green-portrait'].includes(data.template);
       const canvasWidth = isPortrait ? 270 : 428;
       const canvasHeight = isPortrait ? 428 : 270;
 
       const canvas = await html2canvas(element, {
-        scale: 4, // 4x scale for super crisp high-resolution images
+        scale: 4,
         useCORS: true,
-        backgroundColor: null,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
         logging: false,
         width: canvasWidth,
-        height: canvasHeight
+        height: canvasHeight,
+        windowWidth: canvasWidth,
+        windowHeight: canvasHeight,
       });
-
-      // Restore to original parent
-      if (parent) {
-        parent.appendChild(element);
-      }
-      element.style.cssText = originalStyle;
 
       const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = `student-id-${side}-${data.name.toLowerCase().replace(/\s+/g, '-')}.png`;
       link.href = dataUrl;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
     } catch (err) {
       console.error('Error generating image:', err);
+      alert('Download failed. Please try again.');
     } finally {
       setIsExporting(false);
     }
@@ -185,16 +181,6 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
       const canvasWidth = isPortrait ? 270 : 428;
       const canvasHeight = isPortrait ? 428 : 270;
 
-      const frontCanvas = await html2canvas(frontElement, { scale: 4, useCORS: true, logging: false, width: canvasWidth, height: canvasHeight });
-      const backCanvas = await html2canvas(backElement, { scale: 4, useCORS: true, logging: false, width: canvasWidth, height: canvasHeight });
-
-      // Restore elements
-      if (frontParent) frontParent.appendChild(frontElement);
-      if (backParent) backParent.appendChild(backElement);
-      
-      frontElement.style.cssText = frontOriginal;
-      backElement.style.cssText = backOriginal;
-
       const frontImg = frontCanvas.toDataURL('image/png');
       const backImg = backCanvas.toDataURL('image/png');
 
@@ -215,7 +201,7 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
       pdf.setFontSize(8.5);
       pdf.setTextColor(115, 115, 115); // Zinc-500
       pdf.text(`ISSUED BY: ${data.school.toUpperCase()} (ID: ${data.idNumber})`, 105, 30, { align: 'center' });
-      pdf.text(`OWNER: ${data.name.toUpperCase()} • SPEC: ISO/IEC 7810 CR80`, 105, 35, { align: 'center' });
+      pdf.text(`OWNER: ${data.name.toUpperCase()} â€¢ SPEC: ISO/IEC 7810 CR80`, 105, 35, { align: 'center' });
 
       // Physical CR80 scale in millimeters (85.6mm x 53.98mm)
       const cardW = isPortrait ? 53.98 : 85.6;
@@ -272,7 +258,7 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
       // Add fold arrow helpers
       pdf.setFontSize(7.5);
       pdf.setTextColor(150, 150, 150);
-      pdf.text('← CUT BOUNDARY & FOLD ALONG CENTER LINE →', 105, yOffset + cardH + 5, { align: 'center' });
+      pdf.text('â† CUT BOUNDARY & FOLD ALONG CENTER LINE â†’', 105, yOffset + cardH + 5, { align: 'center' });
 
       // Instructions block position (shifted downward based on orientation)
       const instrY = isPortrait ? 155 : 125;
@@ -302,7 +288,7 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
       // Secure Stamp
       pdf.setFontSize(8);
       pdf.setTextColor(80, 80, 80);
-      pdf.text('✔ CRYPTOGRAPHICALLY SECURED INSTANT DIGITAL CREDENTIAL', 105, stampY, { align: 'center' });
+      pdf.text('âœ” CRYPTOGRAPHICALLY SECURED INSTANT DIGITAL CREDENTIAL', 105, stampY, { align: 'center' });
 
       pdf.save(`credential-card-${safeName}.pdf`);
     } catch (err) {
@@ -312,64 +298,10 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
     }
   };
 
-  // Preset styles matching preview elements for the offscreen flat exports
-  const getFlatThemeClasses = () => {
-    switch (data.template) {
-      case 'system-7':
-        return {
-          card: 'bg-black border border-zinc-800 text-zinc-450 font-mono relative',
-          accentText: 'text-white',
-          accentBg: 'bg-white/5 border border-white/10',
-          badge: 'border border-zinc-800 text-white bg-zinc-950 font-mono text-[8px] uppercase tracking-wider',
-          label: 'text-[7.5px] text-zinc-500 uppercase font-mono tracking-widest block',
-          value: 'text-white text-[10.5px] font-bold font-mono tracking-tight block truncate',
-        };
-      case 'bespoke':
-        return {
-          card: 'bg-zinc-950 border border-zinc-900 text-zinc-300 font-serif relative',
-          accentText: 'text-zinc-200',
-          accentBg: 'bg-black border border-zinc-800',
-          badge: 'border border-zinc-800 text-zinc-200 bg-black font-serif italic text-[8.5px]',
-          label: 'text-[8px] text-zinc-450 italic font-serif block',
-          value: 'text-zinc-100 text-[11px] font-medium font-sans tracking-wide block truncate',
-        };
-      case 'atelier':
-      default:
-        return {
-          card: 'bg-[#080808] border border-zinc-850 text-zinc-400 font-sans relative',
-          accentText: 'text-white',
-          accentBg: 'bg-white/5 border border-white/10',
-          badge: 'border-white/10 text-white bg-zinc-900/60 font-sans font-bold text-[8.5px]',
-          label: 'text-[8.5px] text-zinc-500 uppercase tracking-widest font-sans block',
-          value: 'text-white text-[11.5px] font-bold tracking-wide block truncate',
-        };
-    }
-  };
-
-  const flatTheme = getFlatThemeClasses();
-  const cardThemeStyles = {
-    '--theme-accent': data.colorTheme || '#ffffff',
-  } as React.CSSProperties;
-
-  // Generate vector barcode lines for flat view
-  const renderFlatBarcode = (idNum: string) => {
-    const id = idNum || 'STU-2026-0042';
-    const codes = id.split('').map(char => char.charCodeAt(0));
-    return (
-      <div className="flex items-center justify-between w-full h-8 px-1 bg-white rounded-none overflow-hidden">
-        {codes.map((code, index) => {
-          const widthClass = code % 3 === 0 ? 'w-[0.5px]' : code % 3 === 1 ? 'w-[1.5px]' : 'w-[2.5px]';
-          if (index % 2 === 1) {
-            return <div key={index} className="h-full bg-transparent w-[0.7px]" />;
-          }
-          return <div key={index} className={`h-full bg-zinc-950 ${widthClass}`} />;
-        })}
-        {Array.from({ length: Math.max(5, 25 - codes.length) }).map((_, i) => (
-          <div key={`rem-${i}`} className={`h-full bg-zinc-950 ${i % 2 === 0 ? 'w-[0.7px]' : 'w-[1.8px]'}`} />
-        ))}
-      </div>
-    );
-  };
+  // --- HIDDEN OFFSCREEN FLAT EXPORT FRAMES ---
+  // Using IDCardFace (a flat, non-3D renderer) so html2canvas captures correct output.
+  const isPortraitTemplate = ['cbse-portrait', 'saffron-portrait', 'green-portrait'].includes(data.template);
+  const shareUrl = isMounted && origin ? `${origin}/id/${token}` : '';
 
   return (
     <main className="min-h-screen w-full flex flex-col items-center bg-[#030303] py-12 px-4 select-none relative overflow-hidden text-white font-mono">
@@ -377,7 +309,7 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
       {/* Micro Grid Rulers at absolute screen margins */}
       <div className="absolute top-0 left-0 right-0 h-4 border-b border-zinc-900 flex items-center justify-between px-6 text-[8px] text-zinc-600 pointer-events-none z-20">
         <span>[SYSTEM_WORKSPACE // PRESENTATION_MODE]</span>
-        <span>LAT: 42.3601° N, LON: 71.0589° W</span>
+        <span>LAT: 42.3601Â° N, LON: 71.0589Â° W</span>
         <span>SYS.STATUS: CREDENTIAL_ACTIVE</span>
       </div>
 
@@ -431,7 +363,7 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
               [01] 3D_INTERACTIVE_CREDENTIAL
             </h2>
             <span className="text-[8.5px] text-zinc-650 font-bold uppercase tracking-wider">
-              CR80 ASPECT RATIO • PRESS TO FLIP
+              CR80 ASPECT RATIO â€¢ PRESS TO FLIP
             </span>
           </div>
 
@@ -563,273 +495,34 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
         </div>
       </div>
 
-      {/* --- HIDDEN OFFSCREEN FLAT ID CARD RENDERING FRAMES ---
-          This container is absolutely positioned far offscreen. It renders Front and Back card faces flatly 
-          (without 3D rotates or perspectives) at exact high-res sizes so html2canvas renders perfect output. */}
-      <div 
-        className="absolute overflow-hidden pointer-events-none"
-        style={{ left: '-9999px', top: '-9999px', width: '500px', height: '600px', zIndex: -10 }}
+      {/* HIDDEN OFFSCREEN FLAT EXPORT FRAMES â€” rendered via IDCardFace (no 3D transforms) */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: '-9999px',
+          top: 0,
+          zIndex: -1,
+          pointerEvents: 'none',
+          opacity: 1,
+          visibility: 'visible',
+        }}
       >
-        {/* Offscreen Front Card (CR80 aspect ratio locked flat container) */}
-        <div
-          ref={flatFrontRef}
-          style={cardThemeStyles}
-          className={`${
-            data.orientation === 'portrait' ? 'w-[270px] h-[428px]' : 'w-[428px] h-[270px]'
-          } relative p-5 overflow-hidden flex flex-col justify-between select-none ${flatTheme.card}`}
-        >
-          {/* Fine Shimmer Overlay */}
-          <div className="shiny-overlay" />
-
-          {/* Template Specific Background Designs */}
-          {data.template === 'system-7' && (
-            <>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none" />
-              <div className="absolute top-2 left-2 w-1.5 h-1.5 border-t border-l border-zinc-700 pointer-events-none" />
-              <div className="absolute top-2 right-2 w-1.5 h-1.5 border-t border-r border-zinc-700 pointer-events-none" />
-              <div className="absolute bottom-2 left-2 w-1.5 h-1.5 border-b border-l border-zinc-700 pointer-events-none" />
-              <div className="absolute bottom-2 right-2 w-1.5 h-1.5 border-b border-r border-zinc-700 pointer-events-none" />
-            </>
-          )}
-          
-          {data.template === 'bespoke' && (
-            <div className="absolute inset-1.5 border border-zinc-900/60 pointer-events-none" />
-          )}
-
-          {/* Top Bar: School & Logo */}
-          <div className="flex items-center justify-between gap-3 z-10 w-full">
-            <div className="flex items-center gap-2">
-              <div className="p-1 border border-zinc-800 bg-black flex items-center justify-center">
-                <ShieldCheck className="w-3.5 h-3.5" style={{ color: 'var(--theme-accent)' }} />
-              </div>
-              <div className="flex flex-col leading-none">
-                <h3 className={`text-[10px] font-black tracking-wider uppercase truncate ${
-                  data.orientation === 'portrait' ? 'max-w-[110px]' : 'max-w-[210px]'
-                }`}>
-                  {data.school || 'ACADEMIA INSTITUTE'}
-                </h3>
-                <span className="text-[7px] text-zinc-500 uppercase tracking-widest font-mono">
-                  SECURE CREDENTIAL
-                </span>
-              </div>
-            </div>
-            <div className={`px-2 py-0.5 font-bold ${flatTheme.badge}`}>
-              {data.role || 'STUDENT'}
-            </div>
-          </div>
-
-          {/* Middle Section: Photo & Core Details */}
-          <div className={`flex z-10 flex-1 w-full ${
-            data.orientation === 'portrait' ? 'flex-col items-center justify-center gap-3.5 my-2' : 'items-center gap-4 my-2'
-          }`}>
-            <div className="relative shrink-0">
-              <div className={`w-18 aspect-[3/4] border bg-black flex items-center justify-center overflow-hidden ${
-                data.template === 'system-7' ? 'border-zinc-700' :
-                data.template === 'bespoke' ? 'border-zinc-800' :
-                'border-zinc-850'
-              }`}>
-                {data.avatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={data.avatar} alt={data.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-zinc-600 font-bold text-2xl">?</span>
-                )}
-              </div>
-            </div>
-
-            <div className={`flex-1 flex flex-col justify-center space-y-1.5 ${
-              data.orientation === 'portrait' ? 'items-center text-center w-full' : 'h-full'
-            }`}>
-              <div>
-                <span className={flatTheme.label}>IDENTIFICATION.NAME</span>
-                <h2 className={`font-black uppercase tracking-wide leading-tight ${
-                  data.template === 'bespoke' ? 'text-zinc-200 font-serif text-sm' : 'text-white text-[12.5px]'
-                } ${data.orientation === 'portrait' ? 'text-center max-w-[220px]' : ''}`}>
-                  {data.name || 'JANE DOE'}
-                </h2>
-              </div>
-
-              <div className={`grid gap-2 w-full ${
-                data.orientation === 'portrait' ? 'grid-cols-2 text-center' : 'grid-cols-2'
-              }`}>
-                <div>
-                  <span className={flatTheme.label}>SERIAL_NO</span>
-                  <span className={flatTheme.value}>
-                    {data.idNumber || 'STU-2026-0042'}
-                  </span>
-                </div>
-                <div>
-                  <span className={flatTheme.label}>DEPT/CLASS</span>
-                  <span className={flatTheme.value}>
-                    {data.grade || 'COMPUTER SCIENCE'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Bar: Issues, Validity & Chip */}
-          <div className="flex items-end justify-between border-t border-zinc-900 pt-2 z-10 w-full">
-            <div className={`flex text-[8.5px] text-zinc-500 font-mono ${
-              data.orientation === 'portrait' ? 'flex-col gap-0.5 items-start' : 'items-center gap-4'
-            }`}>
-              <div>
-                <span className="opacity-50 font-bold">VAL.FROM: </span>
-                <span className="text-zinc-350">{data.issueDate || '08/2025'}</span>
-              </div>
-              <div>
-                <span className="opacity-50 font-bold">VAL.THRU: </span>
-                <span className="text-zinc-350">{data.expiryDate || '08/2026'}</span>
-              </div>
-            </div>
-            
-            <div className="w-6.5 h-4.5 rounded-none flex flex-col justify-around p-0.5 border border-zinc-800 bg-[#101012] shrink-0">
-              <div className="w-full h-[0.5px] bg-zinc-700/60" />
-              <div className="w-3/4 h-[0.5px] bg-zinc-700/60" />
-              <div className="w-full h-[0.5px] bg-zinc-700/60" />
-            </div>
-          </div>
+        {/* Front face export target */}
+        <div ref={flatFrontRef} style={{ display: 'inline-block' }}>
+          <IDCardFace data={data} side="front" shareUrl={shareUrl} />
         </div>
 
-        {/* Offscreen Back Card (CR80 aspect ratio locked flat container) */}
-        <div
-          ref={flatBackRef}
-          style={cardThemeStyles}
-          className={`${
-            data.orientation === 'portrait' ? 'w-[270px] h-[428px]' : 'w-[428px] h-[270px]'
-          } relative p-5 overflow-hidden flex flex-col justify-between select-none ${flatTheme.card}`}
-        >
-          {/* Fine Shimmer Overlay */}
-          <div className="shiny-overlay" />
-
-          {/* Template Specific Background Designs */}
-          {data.template === 'system-7' && (
-            <>
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none" />
-              <div className="absolute top-2 left-2 w-1.5 h-1.5 border-t border-l border-zinc-700 pointer-events-none" />
-              <div className="absolute top-2 right-2 w-1.5 h-1.5 border-t border-r border-zinc-700 pointer-events-none" />
-              <div className="absolute bottom-2 left-2 w-1.5 h-1.5 border-b border-l border-zinc-700 pointer-events-none" />
-              <div className="absolute bottom-2 right-2 w-1.5 h-1.5 border-b border-r border-zinc-700 pointer-events-none" />
-            </>
-          )}
-          
-          {data.template === 'bespoke' && (
-            <div className="absolute inset-1.5 border border-zinc-900/60 pointer-events-none" />
-          )}
-
-          {/* Back Header: Institution Verification */}
-          <div className="flex items-center justify-between border-b border-zinc-900 pb-2 z-10 w-full">
-            <div className="flex flex-col leading-none">
-              <span className="text-[7.5px] uppercase tracking-widest text-zinc-500 font-mono">SYSTEM_CONTACT</span>
-              <span className="text-[9.5px] font-bold text-zinc-350 truncate max-w-[160px]">
-                {data.school || 'ACADEMIA INSTITUTE'}
-              </span>
-            </div>
-            <span className="text-[7px] text-zinc-500 tracking-wider">SYS.REC_SECURE</span>
-          </div>
-
-          {/* Back Center: Emergency, barcode and QR */}
-          <div className={`flex z-10 flex-1 w-full ${
-            data.orientation === 'portrait' ? 'flex-col items-center justify-center gap-3.5 my-2' : 'gap-4 items-center my-1'
-          }`}>
-            {/* QR Code Container */}
-            <div className="p-1 bg-white border border-zinc-800 flex items-center justify-center shrink-0 w-16 h-16">
-              {qrUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img 
-                  src={qrUrl} 
-                  alt="Scan Verification QR" 
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="w-full h-full bg-zinc-900 animate-pulse" />
-              )}
-            </div>
-
-            {/* Personal details list */}
-            <div className={`flex-1 flex flex-col justify-center space-y-1.5 ${
-              data.orientation === 'portrait' ? 'items-center text-center w-full' : ''
-            }`}>
-              <div className="flex items-center gap-1.5 text-[8.5px]">
-                <span className="text-zinc-500">BLOOD_GRP:</span>
-                <span className="font-bold text-white">{data.bloodGroup || 'O+'}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-[8.5px]">
-                <span className="text-zinc-500">PHONE_SYS:</span>
-                <span className="font-bold text-white">{data.phone || '+1 234-567-890'}</span>
-              </div>
-              <div className={`flex items-center gap-1.5 text-[8.5px] ${
-                data.orientation === 'portrait' ? 'max-w-full justify-center' : 'max-w-[190px]'
-              }`}>
-                <span className="text-zinc-500">EMAIL_SYS:</span>
-                <span className="font-bold text-white truncate max-w-[130px]">{data.email || 'j.doe@school.edu'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Back Footer: Signature and Barcode */}
-          <div className={`flex border-t border-zinc-900 pt-2 z-10 ${
-            data.orientation === 'portrait' ? 'flex-col items-center gap-2.5 w-full' : 'items-end justify-between gap-4 w-full'
-          }`}>
-            {/* Principal Signature Frame (above barcode in portrait) */}
-            {data.orientation === 'portrait' && (
-              <div className="flex flex-col items-center shrink-0">
-                <div className="h-6 w-20 relative flex items-center justify-center border-b border-zinc-800 bg-[#0d0d0f] p-0.5">
-                  {data.signature ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img 
-                      src={data.signature} 
-                      alt="Signature" 
-                      className="max-h-full max-w-full object-contain filter invert brightness-200" 
-                    />
-                  ) : (
-                    <span className="text-[6.5px] text-zinc-650 italic">SIGNATURE</span>
-                  )}
-                </div>
-                <span className="text-[6.5px] uppercase tracking-widest text-zinc-500 mt-1">
-                  VERIFIED AUTHORITY
-                </span>
-              </div>
-            )}
-
-            {/* Barcode Frame */}
-            <div className={`flex flex-col space-y-0.5 ${
-              data.orientation === 'portrait' ? 'w-[150px] items-center' : 'w-[130px]'
-            }`}>
-              {renderFlatBarcode(data.idNumber)}
-              <span className="text-[7px] font-mono text-center tracking-widest text-zinc-550">
-                {data.idNumber || 'STU-2026-0042'}
-              </span>
-            </div>
-
-            {/* Principal Signature Frame (on the right in landscape) */}
-            {data.orientation !== 'portrait' && (
-              <div className="flex flex-col items-center shrink-0">
-                <div className="h-6 w-20 relative flex items-center justify-center border-b border-zinc-800 bg-[#0d0d0f] p-0.5">
-                  {data.signature ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img 
-                      src={data.signature} 
-                      alt="Signature" 
-                      className="max-h-full max-w-full object-contain filter invert brightness-200" 
-                    />
-                  ) : (
-                    <span className="text-[6.5px] text-zinc-650 italic">SIGNATURE</span>
-                  )}
-                </div>
-                <span className="text-[6.5px] uppercase tracking-widest text-zinc-500 mt-1">
-                  VERIFIED AUTHORITY
-                </span>
-              </div>
-            )}
-          </div>
+        {/* Back face export target */}
+        <div ref={flatBackRef} style={{ display: 'inline-block', marginLeft: 20 }}>
+          <IDCardFace data={data} side="back" shareUrl={shareUrl} />
         </div>
       </div>
-      
-      {/* Visual Workspace Controls */}
+
+      {/* Footer */}
       <footer className="mt-16 text-center text-[8.5px] text-zinc-700 flex items-center gap-2 border-t border-zinc-900 pt-6 max-w-5xl w-full justify-between">
         <span>SYSTEM VERSION: 2026.05.21</span>
-        <span>CR80 PLATFORM SPECIFICATION • COPYRIGHT PURE HUMAN CADASTRAL</span>
+        <span>CR80 PLATFORM SPECIFICATION â€¢ COPYRIGHT PURE HUMAN CADASTRAL</span>
       </footer>
     </main>
   );
