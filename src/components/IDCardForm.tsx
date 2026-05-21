@@ -11,12 +11,6 @@ interface IDCardFormProps {
   onSubmit: () => void;
 }
 
-const PRESET_COLORS = [
-  { name: 'Titanium White', value: '#ffffff' },
-  { name: 'Steel Gray', value: '#a1a1aa' },
-  { name: 'Slate Gray', value: '#71717a' },
-  { name: 'Carbon Black', value: '#18181b' },
-];
 
 export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProps) {
   const [photoError, setPhotoError] = useState('');
@@ -53,21 +47,31 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
     });
   };
 
-  // Select Preset Color Accent
-  const handleColorSelect = (color: string) => {
-    onChange({
-      ...value,
-      colorTheme: color,
-    });
-  };
 
-  // Select ID Card Design Template
+  // Portrait templates
+  const PORTRAIT_TEMPLATES: StudentData['template'][] = ['cbse-portrait', 'saffron-portrait', 'green-portrait'];
+  // Landscape templates
+  const LANDSCAPE_TEMPLATES: StudentData['template'][] = ['navy-landscape', 'maroon-landscape', 'tricolor-landscape'];
+
+  // Select ID Card Design Template — also syncs orientation
   const handleTemplateSelect = (template: StudentData['template']) => {
+    const isPortrait = PORTRAIT_TEMPLATES.includes(template);
     onChange({
       ...value,
       template,
-      colorTheme: '#ffffff', // Default to clean monochrome white accent
+      orientation: isPortrait ? 'portrait' : 'landscape',
+      colorTheme: '#ffffff',
     });
+  };
+
+  // Switching orientation picks the first matching template in that group
+  const handleOrientationChange = (o: 'landscape' | 'portrait') => {
+    const currentIsPortrait = PORTRAIT_TEMPLATES.includes(value.template as StudentData['template']);
+    const switchingGroup = (o === 'portrait') !== currentIsPortrait;
+    const newTemplate = switchingGroup
+      ? (o === 'portrait' ? PORTRAIT_TEMPLATES[0] : LANDSCAPE_TEMPLATES[0])
+      : value.template;
+    onChange({ ...value, orientation: o, template: newTemplate as StudentData['template'] });
   };
 
   // Process and Compress Image Files
@@ -214,88 +218,100 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
   return (
     <div className="w-full flex flex-col gap-6 font-mono text-[11px]">
       
-      {/* A. Orientation */}
+      {/* A. Template — 6 Indian school designs in 2 groups */}
       <div className="flex flex-col gap-2">
+        <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
+          <Palette className="w-3.5 h-3.5" />
+          Design Template
+        </label>
+
+        {/* Portrait group */}
+        <div className="flex flex-col gap-0">
+          <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest px-1 pb-1">Portrait (Vertical)</div>
+          <div className="grid grid-cols-3 gap-0 border border-zinc-800">
+            {([
+              { id: 'cbse-portrait', label: 'CBSE', sub: 'Navy' },
+              { id: 'saffron-portrait', label: 'KV', sub: 'Saffron' },
+              { id: 'green-portrait', label: 'NVS', sub: 'Green' },
+            ] as const).map((t, i) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => handleTemplateSelect(t.id)}
+                className={`py-2.5 px-1 flex flex-col items-center gap-0.5 text-center transition-all cursor-pointer ${
+                  i < 2 ? 'border-r border-zinc-800' : ''
+                } ${
+                  value.template === t.id
+                    ? 'bg-white text-black'
+                    : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
+                }`}
+              >
+                <span className="text-[9px] font-black uppercase tracking-wider">{t.label}</span>
+                <span className={`text-[7px] font-bold uppercase tracking-wide ${
+                  value.template === t.id ? 'text-zinc-600' : 'text-zinc-700'
+                }`}>{t.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Landscape group */}
+        <div className="flex flex-col gap-0">
+          <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest px-1 pb-1">Landscape (Horizontal)</div>
+          <div className="grid grid-cols-3 gap-0 border border-zinc-800">
+            {([
+              { id: 'navy-landscape', label: 'DPS', sub: 'Navy' },
+              { id: 'maroon-landscape', label: 'Heritage', sub: 'Maroon' },
+              { id: 'tricolor-landscape', label: 'National', sub: 'Tricolor' },
+            ] as const).map((t, i) => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => handleTemplateSelect(t.id)}
+                className={`py-2.5 px-1 flex flex-col items-center gap-0.5 text-center transition-all cursor-pointer ${
+                  i < 2 ? 'border-r border-zinc-800' : ''
+                } ${
+                  value.template === t.id
+                    ? 'bg-white text-black'
+                    : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
+                }`}
+              >
+                <span className="text-[9px] font-black uppercase tracking-wider">{t.label}</span>
+                <span className={`text-[7px] font-bold uppercase tracking-wide ${
+                  value.template === t.id ? 'text-zinc-600' : 'text-zinc-700'
+                }`}>{t.sub}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* B. Orientation — read-only indicator (auto-set by template) */}
+      <div className="flex flex-col gap-1.5">
         <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
           <Sliders className="w-3.5 h-3.5" />
           Orientation
+          <span className="ml-auto text-[8px] text-zinc-600 normal-case tracking-normal font-normal">auto-set by template</span>
         </label>
         <div className="grid grid-cols-2 gap-0 border border-zinc-800">
-          {(['landscape', 'portrait'] as const).map((o) => (
+          {(['portrait', 'landscape'] as const).map((o) => (
             <button
               key={o}
               type="button"
-              onClick={() => onChange({ ...value, orientation: o })}
-              className={`py-3 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              onClick={() => handleOrientationChange(o)}
+              className={`py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                o === 'portrait' ? 'border-r border-zinc-800' : ''
+              } ${
                 (value.orientation || 'landscape') === o
                   ? 'bg-white text-black font-black'
                   : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
               }`}
             >
-              {o.toUpperCase()}
+              {o}
             </button>
           ))}
         </div>
       </div>
-
-      {/* B. Template */}
-      <div className="flex flex-col gap-2">
-        <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
-          <Palette className="w-3.5 h-3.5" />
-          Template
-        </label>
-        <div className="grid grid-cols-3 gap-0 border border-zinc-800">
-          {(['atelier', 'system-7', 'bespoke'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => handleTemplateSelect(t)}
-              className={`py-3 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer border-r border-zinc-800 last:border-r-0 ${
-                value.template === t
-                  ? 'bg-white text-black font-black'
-                  : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
-              }`}
-            >
-              {t.toUpperCase()}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* C. Accent Color */}
-      {value.template === 'atelier' && (
-        <div className="flex flex-col gap-2 border border-zinc-800 p-4 bg-black">
-          <label className="text-[9.5px] font-bold tracking-widest text-zinc-500 uppercase">
-            Accent Color
-          </label>
-          <div className="flex flex-wrap items-center gap-3 mt-1.5">
-            {PRESET_COLORS.map((c) => (
-              <button
-                key={c.name}
-                type="button"
-                onClick={() => handleColorSelect(c.value)}
-                className="w-6 h-6 border border-zinc-700 relative transition-transform hover:scale-105 flex items-center justify-center cursor-pointer"
-                style={{ backgroundColor: c.value }}
-                title={c.name}
-              >
-                {value.colorTheme === c.value && (
-                  <div className="w-1.5 h-1.5 bg-zinc-900 mix-blend-difference" />
-                )}
-              </button>
-            ))}
-            <div className="flex items-center gap-2 pl-3 border-l border-zinc-800">
-              <input
-                type="color"
-                name="colorTheme"
-                value={value.colorTheme}
-                onChange={handleInputChange}
-                className="w-6 h-6 border border-zinc-700 bg-transparent cursor-pointer p-0 overflow-hidden"
-              />
-              <span className="text-[9px] text-zinc-400 font-mono">{value.colorTheme.toUpperCase()}</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* D. Photo */}
       <div className="flex flex-col gap-2 border border-zinc-800 p-4 bg-black">
