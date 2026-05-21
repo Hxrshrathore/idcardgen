@@ -11,7 +11,7 @@ export interface StudentData {
   bloodGroup: string;
   issueDate: string;
   expiryDate: string;
-  template: 'cyberpunk' | 'classic' | 'minimal' | 'retro';
+  template: 'atelier' | 'system-7' | 'bespoke';
   colorTheme: string; // hex color code
   avatar: string; // Base64 image data URI or avatar preset name
   signature: string; // Base64 drawing data URI
@@ -115,8 +115,8 @@ export function decompressStudentData(token: string): StudentData | null {
             bloodGroup: compact.b || '',
             issueDate: compact.idate || '',
             expiryDate: compact.edate || '',
-            template: (compact.t || 'minimal') as StudentData['template'],
-            colorTheme: compact.c || '#6366f1',
+            template: (compact.t || 'atelier') as StudentData['template'],
+            colorTheme: compact.c || '#ffffff',
             avatar: compact.a || '',
             signature: compact.sig || '',
             orientation: compact.o === 'p' ? 'portrait' : 'landscape',
@@ -145,8 +145,8 @@ export function decompressStudentData(token: string): StudentData | null {
           bloodGroup: compact.b || '',
           issueDate: compact.idate || '',
           expiryDate: compact.edate || '',
-          template: (compact.t || 'minimal') as StudentData['template'],
-          colorTheme: compact.c || '#6366f1',
+          template: (compact.t || 'atelier') as StudentData['template'],
+          colorTheme: compact.c || '#ffffff',
           avatar: compact.a || '',
           signature: compact.sig || '',
           orientation: compact.o === 'p' ? 'portrait' : 'landscape',
