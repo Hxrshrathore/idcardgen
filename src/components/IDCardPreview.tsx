@@ -137,7 +137,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
           <div className="overflow-hidden flex items-center justify-center bg-[#f0f4f8]" style={{ width: 68, height: 80, border: '2px solid #1e4d8c', borderRadius: 2 }}>
             {data.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" />
+              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
             ) : (
               <User className="w-8 h-8" style={{ color: '#1e4d8c' }} />
             )}
@@ -312,7 +312,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
             }}>
               {data.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" />
+                <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
               ) : (
                 <User className="w-8 h-8" style={{ color: '#e86c00' }} />
               )}
@@ -500,7 +500,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
           }}>
             {data.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" />
+              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
             ) : (
               <User className="w-8 h-8" style={{ color: '#047857' }} />
             )}
@@ -668,7 +668,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
           <div className="shrink-0" style={{ width: 52, height: 64, border: '2px solid #1a3a8c', overflow: 'hidden', background: '#e8eeff' }}>
             {data.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" />
+              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-7 h-7" style={{ color: '#1a3a8c' }} />
@@ -841,7 +841,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
           }}>
             {data.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" />
+              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-7 h-7" style={{ color: '#7c1030' }} />
@@ -1015,7 +1015,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
             <div className="overflow-hidden" style={{ width: 56, height: 70, background: '#f0f0ff' }}>
               {data.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" />
+                <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <User className="w-7 h-7" style={{ color: '#000080' }} />
@@ -1330,7 +1330,7 @@ export function IDCardFace({
         <div className="flex-1 flex px-3 py-2 gap-3 bg-white">
           <div className="flex flex-col items-center gap-1 shrink-0">
             <div className="overflow-hidden flex items-center justify-center bg-[#f0f4f8]" style={{ width: 68, height: 80, border: '2px solid #1e4d8c', borderRadius: 2 }}>
-              {data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User className="w-8 h-8" style={{ color: '#1e4d8c' }} />}
+              {data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" /> : <User className="w-8 h-8" style={{ color: '#1e4d8c' }} />}
             </div>
             <div className="px-2 py-0.5 text-white font-black text-[6.5px] tracking-wider uppercase w-full text-center" style={{ background: '#1e4d8c', borderRadius: 1 }}>{data.role || 'STUDENT'}</div>
           </div>
@@ -1385,7 +1385,7 @@ export function IDCardFace({
         <div className="w-full flex items-center justify-center py-[5px]" style={{ background: '#c45200' }}><span className="text-white font-black text-[7.5px] tracking-[0.25em] uppercase">छात्र पहचान पत्र · Student ID Card</span></div>
         <div className="flex-1 flex flex-col px-3 pt-2 pb-1 bg-[#fffbf5]">
           <div className="flex gap-3">
-            <div className="flex flex-col items-center gap-1 shrink-0"><div className="overflow-hidden flex items-center justify-center" style={{ width: 68, height: 82, border: '2.5px solid #e86c00', borderRadius: 3, background: '#fff3e6' }}>{data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User className="w-8 h-8" style={{ color: '#e86c00' }} />}</div><div className="px-2 py-0.5 text-white font-black text-[6px] tracking-wider uppercase w-full text-center" style={{ background: '#e86c00', borderRadius: 2 }}>{data.role || 'STUDENT'}</div></div>
+            <div className="flex flex-col items-center gap-1 shrink-0"><div className="overflow-hidden flex items-center justify-center" style={{ width: 68, height: 82, border: '2.5px solid #e86c00', borderRadius: 3, background: '#fff3e6' }}>{data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" /> : <User className="w-8 h-8" style={{ color: '#e86c00' }} />}</div><div className="px-2 py-0.5 text-white font-black text-[6px] tracking-wider uppercase w-full text-center" style={{ background: '#e86c00', borderRadius: 2 }}>{data.role || 'STUDENT'}</div></div>
             <div className="flex-1 flex flex-col justify-center gap-[5px]"><div className="border-b-2 pb-1" style={{ borderColor: '#FF9933' }}><p className="text-[6px] font-bold uppercase tracking-wider" style={{ color: '#c45200' }}>Student Name / नाम</p><p className="text-[10px] font-black leading-tight" style={{ color: '#1a0a00' }}>{data.name || 'STUDENT NAME'}</p></div>{[{ label: 'Class / कक्षा', value: data.grade || 'X-A' }, { label: 'Admission No.', value: data.idNumber || 'KV-2026-001' }, { label: 'Blood Group', value: data.bloodGroup || 'O+' }].map(({ label, value }) => (<div key={label} className="flex items-baseline gap-1"><span className="text-[5.5px] font-bold uppercase tracking-wide shrink-0 w-[62px]" style={{ color: '#92400e' }}>{label}</span><span className="text-[8px] font-bold" style={{ color: '#1a0a00' }}>{value}</span></div>))}</div>
           </div>
         </div>
@@ -1423,7 +1423,7 @@ export function IDCardFace({
         <div className="h-1" style={{ background: '#047857' }} />
         <div className="w-full flex items-center justify-center py-[5px]" style={{ background: '#065f46' }}><span className="text-white font-black text-[7.5px] tracking-[0.2em] uppercase">Student Identity Card</span></div>
         <div className="flex-1 flex px-3 py-2 gap-3 bg-[#f0faf4]">
-          <div className="flex flex-col items-center gap-1 shrink-0"><div className="overflow-hidden flex items-center justify-center" style={{ width: 66, height: 80, border: '2.5px solid #047857', borderRadius: 4, background: '#d1fae5' }}>{data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <User className="w-8 h-8" style={{ color: '#047857' }} />}</div><div className="px-2 py-0.5 text-white font-black text-[6px] tracking-wider uppercase w-full text-center" style={{ background: '#047857', borderRadius: 2 }}>{data.role || 'STUDENT'}</div></div>
+          <div className="flex flex-col items-center gap-1 shrink-0"><div className="overflow-hidden flex items-center justify-center" style={{ width: 66, height: 80, border: '2.5px solid #047857', borderRadius: 4, background: '#d1fae5' }}>{data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" /> : <User className="w-8 h-8" style={{ color: '#047857' }} />}</div><div className="px-2 py-0.5 text-white font-black text-[6px] tracking-wider uppercase w-full text-center" style={{ background: '#047857', borderRadius: 2 }}>{data.role || 'STUDENT'}</div></div>
           <div className="flex-1 flex flex-col justify-center gap-[5px]"><div className="pb-1" style={{ borderBottom: '2px solid #6ee7b7' }}><p className="text-[6px] font-bold uppercase tracking-wider" style={{ color: '#047857' }}>Name / नाम</p><p className="text-[10px] font-black leading-tight" style={{ color: '#022c22' }}>{data.name || 'STUDENT NAME'}</p></div>{[{ label: 'Class & Sec.', value: data.grade || 'IX-B' }, { label: 'Admission No.', value: data.idNumber || 'NVS-2026-001' }, { label: 'Blood Group', value: data.bloodGroup || 'B+' }].map(({ label, value }) => (<div key={label} className="flex items-baseline gap-1"><span className="text-[5.5px] font-bold uppercase tracking-wide shrink-0 w-[58px]" style={{ color: '#065f46' }}>{label}</span><span className="text-[8px] font-bold" style={{ color: '#022c22' }}>{value}</span></div>))}</div>
         </div>
         <div className="w-full px-3 py-1.5 flex items-center justify-between" style={{ background: 'linear-gradient(90deg, #064e3b, #047857)' }}><div className="flex flex-col"><span className="text-green-300 text-[5.5px] uppercase tracking-wider">Valid From</span><span className="text-white font-bold text-[7px]">{data.issueDate || '08/2025'}</span></div><div className="h-5 w-px bg-white/20" /><div className="flex flex-col items-center"><span className="text-green-300 text-[5.5px] uppercase tracking-wider">Session</span><span className="text-white font-bold text-[7px]">2025–2026</span></div><div className="h-5 w-px bg-white/20" /><div className="flex flex-col items-end"><span className="text-green-300 text-[5.5px] uppercase tracking-wider">Expires</span><span className="text-white font-bold text-[7px]">{data.expiryDate || '08/2026'}</span></div></div>
@@ -1453,7 +1453,7 @@ export function IDCardFace({
           <div className="px-3 pt-2 pb-1.5" style={{ background: '#f0f4ff', borderBottom: '2px solid #1a3a8c' }}><p className="text-[9px] font-black tracking-wide uppercase" style={{ color: '#0f2552' }}>{data.school || 'DELHI PUBLIC SCHOOL'}</p><p className="text-[6px] tracking-widest font-bold" style={{ color: '#3b5bdb' }}>Affiliated to CBSE · Est. 1949</p></div>
           <TricolorStripe height={3} />
           <div className="flex-1 flex items-center gap-2 px-3 py-1.5">
-            <div className="shrink-0" style={{ width: 52, height: 64, border: '2px solid #1a3a8c', overflow: 'hidden', background: '#e8eeff' }}>{data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User style={{ color: '#1a3a8c', width: 28, height: 28 }} /></div>}</div>
+            <div className="shrink-0" style={{ width: 52, height: 64, border: '2px solid #1a3a8c', overflow: 'hidden', background: '#e8eeff' }}>{data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User style={{ color: '#1a3a8c', width: 28, height: 28 }} /></div>}</div>
             <div className="flex-1 flex flex-col gap-[3px]">
               <div><p className="text-[5.5px] font-bold uppercase tracking-wider" style={{ color: '#3b5bdb' }}>Student Name</p><p className="text-[11px] font-black leading-tight" style={{ color: '#0f2552' }}>{data.name || 'STUDENT NAME'}</p></div>
               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-0.5">{[{ label: 'Class/Section', value: data.grade || 'XII-A' }, { label: 'Roll Number', value: data.idNumber || 'DPS-2026-001' }].map(({ label, value }) => (<div key={label}><span className="text-[5.5px] font-bold uppercase block" style={{ color: '#6b7280' }}>{label}</span><span className="text-[8px] font-bold block" style={{ color: '#0f2552' }}>{value}</span></div>))}</div>
@@ -1496,7 +1496,7 @@ export function IDCardFace({
         <TricolorStripe height={3} />
         <div className="h-[2px] w-full" style={{ background: 'linear-gradient(90deg, #d4af37, #f5d77c, #d4af37)' }} />
         <div className="flex-1 flex items-center px-3 gap-3 bg-[#fff9f9]">
-          <div className="shrink-0 flex flex-col items-center gap-1"><div className="overflow-hidden" style={{ width: 54, height: 68, border: '2.5px solid #7c1030', background: '#fce8ed', outline: '1px solid #d4af37', outlineOffset: 2 }}>{data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User style={{ color: '#7c1030', width: 28, height: 28 }} /></div>}</div><span className="px-2 py-0.5 text-white text-[6px] font-black uppercase tracking-wider" style={{ background: '#7c1030' }}>{data.role || 'STUDENT'}</span></div>
+          <div className="shrink-0 flex flex-col items-center gap-1"><div className="overflow-hidden" style={{ width: 54, height: 68, border: '2.5px solid #7c1030', background: '#fce8ed', outline: '1px solid #d4af37', outlineOffset: 2 }}>{data.avatar ? <img src={data.avatar} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} crossOrigin="anonymous" /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User style={{ color: '#7c1030', width: 28, height: 28 }} /></div>}</div><span className="px-2 py-0.5 text-white text-[6px] font-black uppercase tracking-wider" style={{ background: '#7c1030' }}>{data.role || 'STUDENT'}</span></div>
           <div className="h-[68px] w-px" style={{ background: 'linear-gradient(180deg, transparent, #d4af37, transparent)' }} />
           <div className="flex-1 flex flex-col gap-[4px]">
             <div style={{ borderBottom: '1px solid #f5d77c', paddingBottom: 3 }}><p className="text-[5.5px] font-bold uppercase tracking-wider" style={{ color: '#7c1030' }}>Student Name</p><p className="text-[11px] font-black" style={{ color: '#2d0a10' }}>{data.name || 'STUDENT NAME'}</p></div>

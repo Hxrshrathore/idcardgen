@@ -1,4 +1,6 @@
+// Dynamic ID Page for Credentials
 import { decompressStudentData } from '@/utils/compressor';
+
 import { Metadata } from 'next';
 import IDCardViewerClient from './IDCardViewerClient';
 import Link from 'next/link';

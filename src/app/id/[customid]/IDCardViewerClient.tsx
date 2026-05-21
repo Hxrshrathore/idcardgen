@@ -33,6 +33,10 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
   const [isMounted, setIsMounted] = useState(false);
   const [origin, setOrigin] = useState('');
 
+  const isPortrait = PORTRAIT_TEMPLATES.includes(data.template);
+  const cardW = isPortrait ? 270 : 428;
+  const cardH = isPortrait ? 428 : 270;
+
   // Refs for offscreen flat export elements (IDCardFace — no 3D transforms)
   const flatFrontRef = useRef<HTMLDivElement>(null);
   const flatBackRef = useRef<HTMLDivElement>(null);
@@ -69,18 +73,15 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
 
   // Capture an IDCardFace ref element via html2canvas
   const captureElement = async (element: HTMLDivElement) => {
-    const html2canvas = (await import('html2canvas')).default;
-    const isPortrait = PORTRAIT_TEMPLATES.includes(data.template);
-    const w = isPortrait ? 270 : 428;
-    const h = isPortrait ? 428 : 270;
+    const html2canvas = (await import('html2canvas-pro')).default;
     return html2canvas(element, {
       scale: 4,
       useCORS: true,
-      allowTaint: true,
+      allowTaint: false,
       backgroundColor: '#ffffff',
-      logging: false,
-      width: w,
-      height: h,
+      logging: true,
+      width: cardW,
+      height: cardH,
     });
   };
 
@@ -99,9 +100,9 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-    } catch (err) {
+    } catch (err: any) {
       console.error('PNG export error:', err);
-      alert('Download failed. Please try again.');
+      alert(`Download failed: ${err?.message || err || 'Unknown error'}. Please try again.`);
     } finally {
       setIsExporting(false);
     }
@@ -201,9 +202,9 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
       pdf.text('5. Scan the QR code on the back to verify the digital credential online.', 20, instrY + 44);
 
       pdf.save(`school-id-${safeName}.pdf`);
-    } catch (err) {
+    } catch (err: any) {
       console.error('PDF export error:', err);
-      alert('PDF generation failed. Please try again.');
+      alert(`PDF generation failed: ${err?.message || err || 'Unknown error'}. Please try again.`);
     } finally {
       setIsExporting(false);
     }
@@ -393,19 +394,20 @@ export default function IDCardViewerClient({ data, token, isNew }: IDCardViewerC
       <div
         aria-hidden="true"
         style={{
-          position: 'fixed',
-          left: '-9999px',
+          position: 'absolute',
           top: 0,
-          zIndex: -1,
+          left: 0,
+          width: '2000px',
+          height: '2000px',
+          opacity: 0.01,
           pointerEvents: 'none',
-          opacity: 1,
-          visibility: 'visible',
+          zIndex: -1000,
         }}
       >
-        <div ref={flatFrontRef} style={{ display: 'inline-block' }}>
+        <div ref={flatFrontRef} style={{ display: 'block', width: cardW, height: cardH, overflow: 'hidden' }}>
           <IDCardFace data={data} side="front" shareUrl={shareUrl} />
         </div>
-        <div ref={flatBackRef} style={{ display: 'inline-block', marginLeft: 20 }}>
+        <div ref={flatBackRef} style={{ display: 'block', width: cardW, height: cardH, overflow: 'hidden', marginTop: 20 }}>
           <IDCardFace data={data} side="back" shareUrl={shareUrl} />
         </div>
       </div>
