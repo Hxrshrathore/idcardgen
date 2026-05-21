@@ -17,7 +17,7 @@ const INITIAL_DEMO_DATA: StudentData = {
   bloodGroup: 'O+',
   issueDate: '08/2025',
   expiryDate: '08/2026',
-  template: 'atelier',
+  template: 'cbse-portrait',
   colorTheme: '#ffffff',
   avatar: '',
   signature: '',
@@ -85,13 +85,13 @@ export default function Home() {
         {/* Right: Preview */}
         <div className="lg:col-span-6 flex flex-col gap-6 sticky top-8">
 
-          <div className="border border-zinc-900 bg-black p-6 md:p-8 flex flex-col items-center justify-center min-h-[380px] relative">
+          <div className="border border-zinc-900 bg-black p-6 md:p-8 flex flex-col items-center justify-center min-h-[460px] relative">
             <div className="absolute top-0 left-0 w-3 h-3 border-t border-l border-zinc-700" />
             <div className="absolute top-0 right-0 w-3 h-3 border-t border-r border-zinc-700" />
             <div className="absolute bottom-0 left-0 w-3 h-3 border-b border-l border-zinc-700" />
             <div className="absolute bottom-0 right-0 w-3 h-3 border-b border-r border-zinc-700" />
 
-            <div className="w-full flex items-center justify-between mb-8 border-b border-zinc-900 pb-3">
+            <div className="w-full flex items-center justify-between mb-6 border-b border-zinc-900 pb-3">
               <h2 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest">
                 Live Preview
               </h2>
@@ -100,7 +100,7 @@ export default function Home() {
               </span>
             </div>
 
-            <div className="w-full flex items-center justify-center p-2">
+            <div className="w-full flex items-center justify-center py-2">
               <IDCardPreview
                 data={studentData}
               />

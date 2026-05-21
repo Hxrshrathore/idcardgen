@@ -2,38 +2,101 @@
 
 @import "tailwindcss";
 
+/* ============================================================
+   THEME TOKENS — dark (default) & light
+   ============================================================ */
 :root {
-  --background: #050505;
-  --foreground: #f4f4f5;
-  --primary: #ffffff;
-  --primary-glow: rgba(255, 255, 255, 0.1);
-  
   --font-outfit: 'Outfit', sans-serif;
-  --font-space: 'Space Grotesk', sans-serif;
+  --font-space:  'Space Grotesk', sans-serif;
   --font-playfair: 'Playfair Display', serif;
+}
+
+/* Dark theme (default) */
+html, html.dark {
+  --bg:           #030303;
+  --bg-panel:     #000000;
+  --bg-panel-alt: #0a0a0a;
+  --border:       #18181b;
+  --border-mid:   #27272a;
+  --text-primary: #ffffff;
+  --text-muted:   #71717a;
+  --text-faint:   #3f3f46;
+  --scrollbar-bg: rgba(0,0,0,0.5);
+  --scrollbar-thumb: rgba(255,255,255,0.15);
+  --scrollbar-hover: rgba(255,255,255,0.35);
+  --navbar-bg:    rgba(3,3,3,0.85);
+  --navbar-border: #18181b;
+  --toggle-bg:    #18181b;
+  --toggle-border: #27272a;
+  --toggle-thumb: #27272a;
+}
+
+/* Light theme */
+html.light {
+  --bg:           #f4f4f5;
+  --bg-panel:     #ffffff;
+  --bg-panel-alt: #fafafa;
+  --border:       #e4e4e7;
+  --border-mid:   #d4d4d8;
+  --text-primary: #09090b;
+  --text-muted:   #71717a;
+  --text-faint:   #a1a1aa;
+  --scrollbar-bg: rgba(255,255,255,0.5);
+  --scrollbar-thumb: rgba(0,0,0,0.15);
+  --scrollbar-hover: rgba(0,0,0,0.3);
+  --navbar-bg:    rgba(255,255,255,0.88);
+  --navbar-border: #e4e4e7;
+  --toggle-bg:    #e4e4e7;
+  --toggle-border: #d4d4d8;
+  --toggle-thumb: #ffffff;
+}
+
+/* Smooth theme transitions */
+*, *::before, *::after {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.2s ease;
+}
+
+/* ============================================================
+   THEME UTILITY CLASSES
+   ============================================================ */
+.theme-navbar {
+  background-color: var(--navbar-bg);
+  border-color: var(--navbar-border);
+}
+.theme-logo-border { border-color: var(--border-mid); }
+.theme-logo-bg     { background-color: var(--bg-panel); }
+.theme-logo-icon   { color: var(--text-muted); }
+.theme-text-primary { color: var(--text-primary); }
+.theme-text-muted   { color: var(--text-muted); }
+.theme-toggle {
+  background-color: var(--toggle-bg);
+  border-color: var(--toggle-border);
+}
+.theme-toggle-thumb {
+  background-color: var(--toggle-thumb);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
 
 @theme {
   --font-sans: var(--font-outfit);
   --font-mono: var(--font-space);
   --font-serif: var(--font-playfair);
-  
+
   --color-dark-bg: #050505;
   --color-card-dark: rgba(255, 255, 255, 0.03);
   --color-border-dark: rgba(255, 255, 255, 0.06);
 }
 
-/* Base Body Styles - Sleek, Stark, Professional Monochrome */
+/* Base Body Styles */
 body {
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--bg);
+  color: var(--text-primary);
   font-family: var(--font-outfit);
   overflow-x: hidden;
-  /* Ultra-subtle monochrome layout grid */
-  background-image: 
-    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 80%);
+  background-image: radial-gradient(circle at 50% 50%, rgba(128,128,128,0.03) 0%, transparent 80%);
   background-attachment: fixed;
 }
+
 
 /* Minimalist Scrollbar */
 ::-webkit-scrollbar {
