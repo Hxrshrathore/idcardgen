@@ -1,9 +1,277 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { StudentData } from '../utils/compressor';
+import { StudentData, CustomTemplateConfig, decompressCustomTemplate } from '../utils/compressor';
 import { User, RefreshCw, ShieldCheck, Phone, Mail, Droplets } from 'lucide-react';
 import QRCode from 'qrcode';
+
+// Reusable helper to resolve a custom template layout
+export function getCustomTemplate(data: StudentData): CustomTemplateConfig | null {
+  // 1. Try to decompress from data.customTemplateConfig if present
+  if (data.customTemplateConfig) {
+    const config = decompressCustomTemplate(data.customTemplateConfig);
+    if (config) {
+      // Look up in localStorage to see if we have the local template with background images
+      if (typeof window !== 'undefined') {
+        try {
+          const savedTemplatesStr = localStorage.getItem('id-templates') || '[]';
+          const savedTemplates = JSON.parse(savedTemplatesStr) as CustomTemplateConfig[];
+          const found = savedTemplates.find(t => t.id === config.id || t.name === config.name);
+          if (found) {
+            // Merge in case local version has backgrounds
+            return {
+              ...config,
+              frontBg: found.frontBg || config.frontBg,
+              backBg: found.backBg || config.backBg,
+            };
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      return config;
+    }
+  }
+
+  // 2. Try to look up in localStorage using template ID if data.template starts with 'custom-'
+  if (data.template && data.template.startsWith('custom-') && typeof window !== 'undefined') {
+    try {
+      const savedTemplatesStr = localStorage.getItem('id-templates') || '[]';
+      const savedTemplates = JSON.parse(savedTemplatesStr) as CustomTemplateConfig[];
+      const found = savedTemplates.find(t => t.id === data.template);
+      if (found) return found;
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  return null;
+}
+
+// Flat custom card face component that absolute positions fields using percentages
+export function CustomIDCardFace({
+  data,
+  side,
+  customConfig,
+  shareUrl,
+  flat = false,
+}: {
+  data: StudentData;
+  side: 'front' | 'back';
+  customConfig: CustomTemplateConfig;
+  shareUrl?: string;
+  flat?: boolean;
+}) {
+  const [qrUrl, setQrUrl] = useState<string>('');
+  const qrData = shareUrl || `${data.name} | ${data.idNumber} | ${data.school}`;
+
+  useEffect(() => {
+    QRCode.toDataURL(qrData, {
+      margin: 1, width: 160,
+      color: { dark: '#1e3a5f', light: '#ffffff' },
+    }).then(setQrUrl).catch(console.error);
+  }, [qrData]);
+
+  const renderBarcode = (id: string, color = '#1e3a5f') => {
+    const str = (id || 'STU-2026-0042').trim();
+    const patterns = [
+      "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213",
+      "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132",
+      "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211",
+      "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+      "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331",
+      "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111",
+      "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214",
+      "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+      "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141",
+      "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141",
+      "114131", "311141", "411131", "211412", "211214", "211232", "2331112"
+    ];
+
+    const startCode = 104; // Start B
+    const stopCode = 106;  // Stop
+    const charCodes = [startCode];
+    let sum = startCode;
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      const val = code >= 32 && code <= 127 ? code - 32 : 0;
+      charCodes.push(val);
+      sum += val * (i + 1);
+    }
+    charCodes.push(sum % 103);
+    charCodes.push(stopCode);
+
+    let modules = "";
+    charCodes.forEach((val) => {
+      const pat = patterns[val];
+      for (let i = 0; i < pat.length; i++) {
+        const width = parseInt(pat[i], 10);
+        const bit = (i % 2 === 0) ? "1" : "0";
+        modules += bit.repeat(width);
+      }
+    });
+
+    let path = "";
+    let x = 0;
+    let runLength = 0;
+    for (let i = 0; i <= modules.length; i++) {
+      if (i < modules.length && modules[i] === "1") {
+        runLength++;
+      } else {
+        if (runLength > 0) {
+          path += `M${x - runLength},0 h${runLength} v28 h-${runLength} z `;
+          runLength = 0;
+        }
+      }
+      x++;
+    }
+
+    return (
+      <svg 
+        viewBox={`0 0 ${modules.length} 28`} 
+        width="100%" 
+        height="100%" 
+        preserveAspectRatio="none"
+        shapeRendering="crispEdges"
+        className="overflow-hidden"
+      >
+        <path d={path} fill={color} />
+      </svg>
+    );
+  };
+
+  const bg = side === 'front' ? customConfig.frontBg : customConfig.backBg;
+
+  // Fallback premium dark mesh/gradient background
+  const hasBg = !!bg;
+  const backgroundStyle: React.CSSProperties = hasBg
+    ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : {
+        background: 'linear-gradient(135deg, #09090b 0%, #18181b 50%, #27272a 100%)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+      };
+
+  return (
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        fontFamily: "'Outfit', sans-serif",
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden',
+        transform: side === 'back' ? 'rotateY(180deg) translateZ(1px)' : 'rotateY(0deg) translateZ(1px)',
+        ...backgroundStyle,
+      }}
+    >
+      {/* Fallback layout alert badge if background is missing */}
+      {!hasBg && (
+        <div className="absolute top-2.5 left-2.5 z-50 px-2 py-0.5 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-[6.5px] uppercase font-bold tracking-widest rounded flex items-center gap-1">
+          <span>LAYOUT BG NOT SHARED IN URL</span>
+        </div>
+      )}
+
+      {/* Render each enabled element in customConfig.elements */}
+      {Object.entries(customConfig.elements || {}).map(([key, el]: [string, any]) => {
+        if (!el || !el.enabled || el.side !== side) return null;
+
+        const isText = key !== 'avatar' && key !== 'qrCode' && key !== 'barcode' && key !== 'signature' && key !== 'schoolLogo';
+        const val = 
+          key === 'school' ? (data.school || 'INDIAN PUBLIC SCHOOL') :
+          key === 'name' ? (data.name || 'STUDENT NAME') :
+          key === 'role' ? (data.role || 'STUDENT') :
+          key === 'idNumber' ? (data.idNumber || 'STU-2026-0042') :
+          key === 'grade' ? (data.grade || 'X-A') :
+          key === 'phone' ? (data.phone || '+91 98765 43210') :
+          key === 'email' ? (data.email || 'student@school.edu') :
+          key === 'bloodGroup' ? (data.bloodGroup || 'O+') : '';
+
+        return (
+          <div
+            key={key}
+            style={{
+              position: 'absolute',
+              left: `${el.x}%`,
+              top: `${el.y}%`,
+              width: `${el.w}%`,
+              height: `${el.h}%`,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              overflow: 'hidden',
+            }}
+          >
+            {isText ? (
+              <span
+                style={{
+                  width: '100%',
+                  fontSize: `${el.fontSize * (flat ? 1.0 : 0.88)}px`, // scale up a bit for flat print size
+                  color: el.color || '#1e3a5f',
+                  textAlign: el.align || 'center',
+                  fontWeight: el.bold ? 'bold' : 'normal',
+                  fontStyle: el.italic ? 'italic' : 'normal',
+                  whiteSpace: 'nowrap',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                }}
+              >
+                {val}
+              </span>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                {key === 'avatar' && (
+                  data.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                  ) : (
+                    <div className="w-full h-full bg-[#f0f4f8] flex items-center justify-center border text-[#1e3a5f] font-bold text-[7px] uppercase">
+                      PHOTO
+                    </div>
+                  )
+                )}
+                {key === 'qrCode' && (
+                  qrUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={qrUrl} alt="QR" className="max-w-full max-h-full object-contain" />
+                  ) : (
+                    <div className="w-full h-full bg-zinc-200 animate-pulse" />
+                  )
+                )}
+                {key === 'barcode' && (
+                  <div className="w-full h-full bg-white p-1">
+                    {renderBarcode(data.idNumber, el.color || '#1e3a5f')}
+                  </div>
+                )}
+                {key === 'signature' && (
+                  data.signature ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={data.signature} alt="Sig" className="max-w-full max-h-full object-contain" style={{ filter: 'contrast(2)' }} />
+                  ) : (
+                    <div className="w-full h-full border border-dashed border-zinc-400 bg-zinc-50 flex items-center justify-center text-[6px] italic text-zinc-400">
+                      Signature
+                    </div>
+                  )
+                )}
+                {key === 'schoolLogo' && (
+                  data.schoolLogo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={data.schoolLogo} alt="School Logo" className="w-full h-full object-contain" crossOrigin="anonymous" />
+                  ) : (
+                    <div className="w-full h-full bg-[#f0f4f8] flex items-center justify-center border text-[#1e3a5f] font-bold text-[7px] uppercase">
+                      LOGO
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 interface IDCardPreviewProps {
   data: StudentData;
@@ -50,21 +318,73 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
 
   // Barcode renderer
   const renderBarcode = (id: string, color = '#1e3a5f') => {
-    const str = id || 'STU-2026-0042';
-    const codes = str.split('').map(c => c.charCodeAt(0));
+    const str = (id || 'STU-2026-0042').trim();
+    const patterns = [
+      "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213",
+      "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132",
+      "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211",
+      "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+      "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331",
+      "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111",
+      "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214",
+      "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+      "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141",
+      "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141",
+      "114131", "311141", "411131", "211412", "211214", "211232", "2331112"
+    ];
+
+    const startCode = 104; // Start B
+    const stopCode = 106;  // Stop
+    const charCodes = [startCode];
+    let sum = startCode;
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      const val = code >= 32 && code <= 127 ? code - 32 : 0;
+      charCodes.push(val);
+      sum += val * (i + 1);
+    }
+    charCodes.push(sum % 103);
+    charCodes.push(stopCode);
+
+    let modules = "";
+    charCodes.forEach((val) => {
+      const pat = patterns[val];
+      for (let i = 0; i < pat.length; i++) {
+        const width = parseInt(pat[i], 10);
+        const bit = (i % 2 === 0) ? "1" : "0";
+        modules += bit.repeat(width);
+      }
+    });
+
+    let path = "";
+    let x = 0;
+    let runLength = 0;
+    for (let i = 0; i <= modules.length; i++) {
+      if (i < modules.length && modules[i] === "1") {
+        runLength++;
+      } else {
+        if (runLength > 0) {
+          path += `M${x - runLength},0 h${runLength} v28 h-${runLength} z `;
+          runLength = 0;
+        }
+      }
+      x++;
+    }
+
     return (
-      <div className="flex items-end h-7 gap-[1px] overflow-hidden">
-        {codes.flatMap((code, i) => [
-          <div key={`b${i}`} style={{ width: code % 3 === 0 ? 1 : code % 3 === 1 ? 2 : 1.5, height: i % 3 === 0 ? '100%' : '70%', background: color }} className="shrink-0" />,
-          <div key={`s${i}`} style={{ width: 1 }} className="shrink-0" />,
-        ])}
-        {Array.from({ length: Math.max(0, 20 - codes.length) }).flatMap((_, i) => [
-          <div key={`pb${i}`} style={{ width: i % 2 === 0 ? 1 : 2, height: i % 2 === 0 ? '100%' : '60%', background: color }} className="shrink-0" />,
-          <div key={`ps${i}`} style={{ width: 1 }} className="shrink-0" />,
-        ])}
-      </div>
+      <svg 
+        viewBox={`0 0 ${modules.length} 28`} 
+        width="100%" 
+        height="100%" 
+        preserveAspectRatio="none"
+        shapeRendering="crispEdges"
+        className="overflow-hidden"
+      >
+        <path d={path} fill={color} />
+      </svg>
     );
   };
+
 
   // India tricolor stripe
   const TricolorStripe = ({ height = 3 }: { height?: number }) => (
@@ -75,8 +395,19 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
     </div>
   );
 
-  // School emblem placeholder (circular with initials)
+  // School emblem placeholder (circular with initials or custom logo)
   const SchoolEmblem = ({ size = 32, bg = 'rgba(255,255,255,0.15)', border = 'rgba(255,255,255,0.4)', textColor = 'white' }: { size?: number; bg?: string; border?: string; textColor?: string }) => {
+    if (data.schoolLogo) {
+      return (
+        <div
+          className="rounded-full overflow-hidden flex items-center justify-center shrink-0 bg-white"
+          style={{ width: size, height: size, border: `1px solid ${border}` }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={data.schoolLogo} alt="Logo" className="w-full h-full object-contain" crossOrigin="anonymous" />
+        </div>
+      );
+    }
     const initials = (data.school || 'School')
       .split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
     return (
@@ -100,6 +431,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
+        transform: 'rotateY(0deg) translateZ(1px)',
         background: '#ffffff',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -189,7 +521,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
-        transform: 'rotateY(180deg)',
+        transform: 'rotateY(180deg) translateZ(1px)',
         background: '#f8fafc',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -266,6 +598,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
+        transform: 'rotateY(0deg) translateZ(1px)',
         background: '#fffbf5',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -374,7 +707,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
-        transform: 'rotateY(180deg)',
+        transform: 'rotateY(180deg) translateZ(1px)',
         background: '#fffbf5',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -454,6 +787,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
+        transform: 'rotateY(0deg) translateZ(1px)',
         background: '#f0faf4',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -554,7 +888,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
-        transform: 'rotateY(180deg)',
+        transform: 'rotateY(180deg) translateZ(1px)',
         background: '#f0faf4',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -631,6 +965,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
+        transform: 'rotateY(0deg) translateZ(1px)',
         background: '#ffffff',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -723,7 +1058,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
-        transform: 'rotateY(180deg)',
+        transform: 'rotateY(180deg) translateZ(1px)',
         background: '#f8faff',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -800,6 +1135,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
+        transform: 'rotateY(0deg) translateZ(1px)',
         background: '#fff9f9',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -905,7 +1241,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
-        transform: 'rotateY(180deg)',
+        transform: 'rotateY(180deg) translateZ(1px)',
         background: '#fff9f9',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -973,6 +1309,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
+        transform: 'rotateY(0deg) translateZ(1px)',
         background: '#ffffff',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -1064,7 +1401,7 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
       style={{
         backfaceVisibility: 'hidden',
         WebkitBackfaceVisibility: 'hidden',
-        transform: 'rotateY(180deg)',
+        transform: 'rotateY(180deg) translateZ(1px)',
         background: '#f8f8ff',
         boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
         fontFamily: "'Outfit', sans-serif",
@@ -1127,13 +1464,29 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
     </div>
   );
 
+  const customConfig = getCustomTemplate(data);
+  const isCustom = !!customConfig;
+
   // ─── Decide card dimensions based on template orientation ────
-  const isLandscape = ['navy-landscape', 'maroon-landscape', 'tricolor-landscape'].includes(template);
+  const isLandscape = isCustom && customConfig
+    ? customConfig.orientation === 'landscape'
+    : ['navy-landscape', 'maroon-landscape', 'tricolor-landscape'].includes(template);
   const cardWidth = isLandscape ? 380 : 240;
   const cardHeight = isLandscape ? 240 : 380;
 
   // ─── Pick Front/Back based on template ─────────────────────
   const renderFront = () => {
+    if (isCustom && customConfig) {
+      return (
+        <CustomIDCardFace
+          data={data}
+          side="front"
+          customConfig={customConfig}
+          shareUrl={shareUrl}
+          flat={false}
+        />
+      );
+    }
     switch (template) {
       case 'saffron-portrait': return <SaffronPortraitFront />;
       case 'green-portrait': return <GreenPortraitFront />;
@@ -1146,6 +1499,17 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
   };
 
   const renderBack = () => {
+    if (isCustom && customConfig) {
+      return (
+        <CustomIDCardFace
+          data={data}
+          side="back"
+          customConfig={customConfig}
+          shareUrl={shareUrl}
+          flat={false}
+        />
+      );
+    }
     switch (template) {
       case 'saffron-portrait': return <SaffronPortraitBack />;
       case 'green-portrait': return <GreenPortraitBack />;
@@ -1266,19 +1630,70 @@ export function IDCardFace({
 
   // Helper: Barcode
   const renderBarcode = (id: string, color = '#1e3a5f') => {
-    const str = id || 'STU-2026-0042';
-    const codes = str.split('').map(c => c.charCodeAt(0));
+    const str = (id || 'STU-2026-0042').trim();
+    const patterns = [
+      "212222", "222122", "222221", "121223", "121322", "131222", "122213", "122312", "132212", "221213",
+      "221312", "231212", "112232", "122132", "122231", "113222", "123122", "123221", "223211", "221132",
+      "221231", "213212", "223112", "312131", "311222", "321122", "321221", "312212", "322112", "322211",
+      "212123", "212321", "232121", "111323", "131123", "131321", "112313", "132113", "132311", "211313",
+      "231113", "231311", "112133", "112331", "132131", "113123", "113321", "133121", "313121", "211331",
+      "231131", "213113", "213311", "213131", "311123", "311321", "331121", "312113", "312311", "332111",
+      "314111", "221411", "431111", "111224", "111422", "121124", "121421", "141122", "141221", "112214",
+      "112412", "122114", "122411", "142112", "142211", "241211", "221114", "413111", "241112", "134111",
+      "111242", "121142", "121241", "114212", "124112", "124211", "411212", "421112", "421211", "212141",
+      "214121", "412121", "111143", "111341", "131141", "114113", "114311", "411113", "411311", "113141",
+      "114131", "311141", "411131", "211412", "211214", "211232", "2331112"
+    ];
+
+    const startCode = 104; // Start B
+    const stopCode = 106;  // Stop
+    const charCodes = [startCode];
+    let sum = startCode;
+    for (let i = 0; i < str.length; i++) {
+      const code = str.charCodeAt(i);
+      const val = code >= 32 && code <= 127 ? code - 32 : 0;
+      charCodes.push(val);
+      sum += val * (i + 1);
+    }
+    charCodes.push(sum % 103);
+    charCodes.push(stopCode);
+
+    let modules = "";
+    charCodes.forEach((val) => {
+      const pat = patterns[val];
+      for (let i = 0; i < pat.length; i++) {
+        const width = parseInt(pat[i], 10);
+        const bit = (i % 2 === 0) ? "1" : "0";
+        modules += bit.repeat(width);
+      }
+    });
+
+    let path = "";
+    let x = 0;
+    let runLength = 0;
+    for (let i = 0; i <= modules.length; i++) {
+      if (i < modules.length && modules[i] === "1") {
+        runLength++;
+      } else {
+        if (runLength > 0) {
+          path += `M${x - runLength},0 h${runLength} v28 h-${runLength} z `;
+          runLength = 0;
+        }
+      }
+      x++;
+    }
+
     return (
-      <div className="flex items-end h-7 gap-[1px] overflow-hidden">
-        {codes.flatMap((code, i) => [
-          <div key={`b${i}`} style={{ width: code % 3 === 0 ? 1 : code % 3 === 1 ? 2 : 1.5, height: i % 3 === 0 ? '100%' : '70%', background: color }} className="shrink-0" />,
-          <div key={`s${i}`} style={{ width: 1 }} className="shrink-0" />,
-        ])}
-        {Array.from({ length: Math.max(0, 20 - codes.length) }).flatMap((_, i) => [
-          <div key={`pb${i}`} style={{ width: i % 2 === 0 ? 1 : 2, height: i % 2 === 0 ? '100%' : '60%', background: color }} className="shrink-0" />,
-          <div key={`ps${i}`} style={{ width: 1 }} className="shrink-0" />,
-        ])}
-      </div>
+      <svg 
+        viewBox={`0 0 ${modules.length} 28`} 
+        width="100%" 
+        height="100%" 
+        preserveAspectRatio="none"
+        shapeRendering="crispEdges"
+        className="overflow-hidden"
+      >
+        <path d={path} fill={color} />
+      </svg>
     );
   };
 
@@ -1301,7 +1716,12 @@ export function IDCardFace({
     );
   };
 
-  const isLandscape = ['navy-landscape', 'maroon-landscape', 'tricolor-landscape'].includes(template);
+  const customConfig = getCustomTemplate(data);
+  const isCustom = !!customConfig;
+
+  const isLandscape = isCustom && customConfig
+    ? customConfig.orientation === 'landscape'
+    : ['navy-landscape', 'maroon-landscape', 'tricolor-landscape'].includes(template);
   const cardW = isLandscape ? 428 : 270;
   const cardH = isLandscape ? 270 : 428;
 
@@ -1314,6 +1734,20 @@ export function IDCardFace({
     fontFamily: "'Outfit', sans-serif",
     flexShrink: 0,
   };
+
+  if (isCustom && customConfig) {
+    return (
+      <div style={flatStyle}>
+        <CustomIDCardFace
+          data={data}
+          side={side}
+          customConfig={customConfig}
+          shareUrl={shareUrl}
+          flat={true}
+        />
+      </div>
+    );
+  }
 
   // ── CBSE Portrait ──────────────────────────────────────────
   if (template === 'cbse-portrait') {

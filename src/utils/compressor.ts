@@ -11,11 +11,87 @@ export interface StudentData {
   bloodGroup: string;
   issueDate: string;
   expiryDate: string;
-  template: 'cbse-portrait' | 'saffron-portrait' | 'green-portrait' | 'navy-landscape' | 'maroon-landscape' | 'tricolor-landscape';
+  template: string; // supports built-in and 'custom-*' templates
   colorTheme: string; // hex color code
   avatar: string; // Base64 image data URI or avatar preset name
   signature: string; // Base64 drawing data URI
+  schoolLogo?: string; // Base64 image data URI of school logo
   orientation?: 'landscape' | 'portrait';
+  customTemplateConfig?: string; // Compressed CustomTemplateConfig string for shared URLs
+}
+
+export interface TemplateElement {
+  x: number;       // percentage (0-100)
+  y: number;       // percentage (0-100)
+  w: number;       // percentage (0-100)
+  h: number;       // percentage (0-100)
+  fontSize: number;// px sizing for text
+  color: string;   // hex value
+  align: 'left' | 'center' | 'right';
+  bold: boolean;
+  italic: boolean;
+  enabled: boolean;
+  side?: 'front' | 'back'; // side of the card it belongs to
+}
+
+export interface CustomTemplateConfig {
+  id: string;
+  name: string;
+  orientation: 'portrait' | 'landscape';
+  themeColor: string;
+  frontBg: string; // Base64 or URL
+  backBg: string;  // Base64 or URL
+  elements: {
+    name: TemplateElement;
+    idNumber: TemplateElement;
+    school: TemplateElement;
+    role: TemplateElement;
+    grade: TemplateElement;
+    email: TemplateElement;
+    phone: TemplateElement;
+    bloodGroup: TemplateElement;
+    avatar: Omit<TemplateElement, 'fontSize' | 'color' | 'align' | 'bold' | 'italic'>;
+    qrCode: Omit<TemplateElement, 'fontSize' | 'color' | 'align' | 'bold' | 'italic'>;
+    barcode: Omit<TemplateElement, 'fontSize' | 'color' | 'align' | 'bold' | 'italic'>;
+    signature: Omit<TemplateElement, 'fontSize' | 'color' | 'align' | 'bold' | 'italic'>;
+    schoolLogo?: Omit<TemplateElement, 'fontSize' | 'color' | 'align' | 'bold' | 'italic'>;
+  };
+}
+
+/**
+ * Compresses CustomTemplateConfig to keep it compact.
+ * Strips base64 backgrounds unless explicitly requested, to fit into shared URLs.
+ */
+export function compressCustomTemplate(config: CustomTemplateConfig, includeImages = false): string {
+  try {
+    const strippedConfig = {
+      ...config,
+      frontBg: includeImages || !config.frontBg.startsWith('data:') ? config.frontBg : '',
+      backBg: includeImages || !config.backBg.startsWith('data:') ? config.backBg : '',
+    };
+    return LZString.compressToEncodedURIComponent(JSON.stringify(strippedConfig));
+  } catch (error) {
+    console.error('Error compressing custom template:', error);
+    return '';
+  }
+}
+
+/**
+ * Decompresses a CustomTemplateConfig token.
+ */
+export function decompressCustomTemplate(token: string): CustomTemplateConfig | null {
+  if (!token) return null;
+  try {
+    const decoded = decodeURIComponent(token);
+    const decompressed = LZString.decompressFromEncodedURIComponent(decoded) || 
+                         LZString.decompressFromEncodedURIComponent(token.replace(/ /g, '+'));
+    if (decompressed) {
+      return JSON.parse(decompressed) as CustomTemplateConfig;
+    }
+  } catch (error) {
+    console.error('Error decompressing custom template:', error);
+  }
+  return null;
 }
 
 // Abbreviation mapping to minimize JSON footprint in the URL
@@ -35,6 +111,8 @@ interface CompactPayload {
   a: string;     // avatar
   sig: string;   // signature
   o?: 'l' | 'p'; // orientation
+  ctc?: string;  // customTemplateConfig
+  sl?: string;   // schoolLogo
 }
 
 /**
@@ -58,6 +136,8 @@ export function compressStudentData(data: StudentData): string {
       a: data.avatar,
       sig: data.signature,
       o: data.orientation === 'portrait' ? 'p' : 'l',
+      ctc: data.customTemplateConfig,
+      sl: data.schoolLogo,
     };
     const jsonStr = JSON.stringify(compact);
     return LZString.compressToEncodedURIComponent(jsonStr);
@@ -115,11 +195,13 @@ export function decompressStudentData(token: string): StudentData | null {
             bloodGroup: compact.b || '',
             issueDate: compact.idate || '',
             expiryDate: compact.edate || '',
-            template: (compact.t || 'cbse-portrait') as StudentData['template'],
+            template: compact.t || 'cbse-portrait',
             colorTheme: compact.c || '#ffffff',
             avatar: compact.a || '',
             signature: compact.sig || '',
+            schoolLogo: compact.sl || '',
             orientation: compact.o === 'p' ? 'portrait' : 'landscape',
+            customTemplateConfig: compact.ctc || '',
           };
         }
       }
@@ -145,11 +227,13 @@ export function decompressStudentData(token: string): StudentData | null {
           bloodGroup: compact.b || '',
           issueDate: compact.idate || '',
           expiryDate: compact.edate || '',
-          template: (compact.t || 'cbse-portrait') as StudentData['template'],
+          template: compact.t || 'cbse-portrait',
           colorTheme: compact.c || '#ffffff',
           avatar: compact.a || '',
           signature: compact.sig || '',
+          schoolLogo: compact.sl || '',
           orientation: compact.o === 'p' ? 'portrait' : 'landscape',
+          customTemplateConfig: compact.ctc || '',
         };
       }
     }

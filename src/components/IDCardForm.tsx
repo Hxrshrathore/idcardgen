@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { StudentData, resizeAndCompressImage } from '../utils/compressor';
+import { StudentData, CustomTemplateConfig, compressCustomTemplate, resizeAndCompressImage } from '../utils/compressor';
 import { PRESET_AVATARS } from '../utils/avatars';
 import { Upload, X, Trash2, Edit3, Image as ImageIcon, Sliders, Palette, Shield } from 'lucide-react';
 
@@ -14,9 +14,74 @@ interface IDCardFormProps {
 
 export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProps) {
   const [photoError, setPhotoError] = useState('');
+  const [logoError, setLogoError] = useState('');
   const [isDrawing, setIsDrawing] = useState(false);
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplateConfig[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Please select a valid image file.');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('Logo must be less than 2MB.');
+      return;
+    }
+
+    setLogoError('');
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const rawDataUrl = event.target?.result as string;
+        // Downscale it to extremely small footprint
+        const compressed = await resizeAndCompressImage(rawDataUrl, 96, 96, 0.65);
+        onChange({
+          ...value,
+          schoolLogo: compressed,
+        });
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Error handling logo:', err);
+      setLogoError('Failed to compress logo.');
+    }
+  };
+
+  const removeLogo = () => {
+    onChange({
+      ...value,
+      schoolLogo: '',
+    });
+    if (logoInputRef.current) {
+      logoInputRef.current.value = '';
+    }
+  };
+
+  const triggerLogoSelect = () => {
+    logoInputRef.current?.click();
+  };
+
+
+  // Load custom templates from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const savedStr = localStorage.getItem('id-templates') || '[]';
+        const saved = JSON.parse(savedStr) as CustomTemplateConfig[];
+        setCustomTemplates(saved);
+      } catch (e) {
+        console.error('Failed to load custom templates in IDCardForm:', e);
+      }
+    }
+  }, []);
 
   // Initialize Signature Canvas settings on mount
   useEffect(() => {
@@ -55,23 +120,45 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
 
   // Select ID Card Design Template — also syncs orientation
   const handleTemplateSelect = (template: StudentData['template']) => {
+    if (template.startsWith('custom-')) {
+      const customT = customTemplates.find(t => t.id === template);
+      if (customT) {
+        const compressedConfig = compressCustomTemplate(customT, false); // omit local base64 background to fit URL
+        onChange({
+          ...value,
+          template,
+          orientation: customT.orientation,
+          colorTheme: customT.themeColor || '#ffffff',
+          customTemplateConfig: compressedConfig
+        });
+        return;
+      }
+    }
+    
     const isPortrait = PORTRAIT_TEMPLATES.includes(template);
     onChange({
       ...value,
       template,
       orientation: isPortrait ? 'portrait' : 'landscape',
       colorTheme: '#ffffff',
+      customTemplateConfig: undefined // Clear custom config for standard templates
     });
   };
 
   // Switching orientation picks the first matching template in that group
   const handleOrientationChange = (o: 'landscape' | 'portrait') => {
-    const currentIsPortrait = PORTRAIT_TEMPLATES.includes(value.template as StudentData['template']);
+    const currentIsPortrait = value.orientation === 'portrait';
     const switchingGroup = (o === 'portrait') !== currentIsPortrait;
-    const newTemplate = switchingGroup
-      ? (o === 'portrait' ? PORTRAIT_TEMPLATES[0] : LANDSCAPE_TEMPLATES[0])
-      : value.template;
-    onChange({ ...value, orientation: o, template: newTemplate as StudentData['template'] });
+    
+    if (switchingGroup) {
+      // If switching to portrait/landscape, try to find a custom template or fallback
+      const matchingCustom = customTemplates.find(t => t.orientation === o);
+      const newTemplate = matchingCustom 
+        ? matchingCustom.id 
+        : (o === 'portrait' ? PORTRAIT_TEMPLATES[0] : LANDSCAPE_TEMPLATES[0]);
+      
+      handleTemplateSelect(newTemplate as StudentData['template']);
+    }
   };
 
   // Process and Compress Image Files
@@ -284,6 +371,32 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
             ))}
           </div>
         </div>
+
+        {/* Custom templates group */}
+        {customTemplates.length > 0 && (
+          <div className="flex flex-col gap-0">
+            <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest px-1 pb-1">Custom Templates</div>
+            <div className="grid grid-cols-3 gap-1">
+              {customTemplates.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => handleTemplateSelect(t.id)}
+                  className={`py-2 px-1 flex flex-col items-center gap-0.5 text-center transition-all cursor-pointer border border-zinc-800 ${
+                    value.template === t.id
+                      ? 'bg-white text-black border-white'
+                      : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
+                  }`}
+                >
+                  <span className="text-[8.5px] font-black uppercase tracking-wider truncate max-w-full block" title={t.name}>{t.name}</span>
+                  <span className={`text-[6.5px] font-bold uppercase tracking-wide ${
+                    value.template === t.id ? 'text-zinc-600' : 'text-zinc-700'
+                  }`}>{t.orientation}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* B. Orientation — read-only indicator (auto-set by template) */}
@@ -424,15 +537,56 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
 
         <div className="flex flex-col gap-1.5">
           <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Institution</label>
-          <input
-            type="text"
-            name="school"
-            placeholder="ACADEMIA INSTITUTE"
-            value={value.school}
-            onChange={handleInputChange}
-            className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none"
-            required
-          />
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              name="school"
+              placeholder="ACADEMIA INSTITUTE"
+              value={value.school}
+              onChange={handleInputChange}
+              className="flex-1 bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none"
+              required
+            />
+            {/* Custom Logo upload block */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={triggerLogoSelect}
+                className={`h-[38px] px-3 border border-zinc-800 bg-black text-[9px] hover:text-white hover:border-zinc-500 transition-colors uppercase font-bold flex items-center gap-1.5 cursor-pointer`}
+              >
+                {value.schoolLogo ? (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={value.schoolLogo} alt="Logo" className="w-5 h-5 object-contain" />
+                    <span>Change</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-3 h-3" />
+                    <span>Logo</span>
+                  </>
+                )}
+              </button>
+              {value.schoolLogo && (
+                <button
+                  type="button"
+                  onClick={removeLogo}
+                  className="absolute -top-1 -right-1 p-0.5 bg-black border border-zinc-800 text-white hover:text-rose-400 rounded-none cursor-pointer"
+                  title="Remove Logo"
+                >
+                  <X className="w-2 h-2" />
+                </button>
+              )}
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                className="hidden"
+              />
+            </div>
+          </div>
+          {logoError && <p className="text-[9px] text-rose-500 font-bold mt-1">{logoError}</p>}
         </div>
 
         <div className="flex flex-col gap-1.5">

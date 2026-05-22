@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { StudentData, compressStudentData } from '../utils/compressor';
 import IDCardForm from '../components/IDCardForm';
 import IDCardPreview from '../components/IDCardPreview';
@@ -59,6 +60,15 @@ export default function Home() {
           Design and generate professional institutional ID cards. Serverless and privacy-first — 
           all data is encoded directly in the URL with no server storage.
         </p>
+
+        <div className="mt-2 flex flex-wrap items-center gap-4">
+          <Link href="/bulk" prefetch={false} className="px-4 py-2 border border-zinc-850 hover:border-zinc-500 bg-[#050505] text-zinc-450 hover:text-white text-[9.5px] uppercase font-bold tracking-widest transition-all flex items-center gap-2">
+            Switch to Bulk Generator 
+          </Link>
+          <Link href="/designer" prefetch={false} className="px-4 py-2 border border-zinc-850 hover:border-zinc-500 bg-[#050505] text-zinc-450 hover:text-white text-[9.5px] uppercase font-bold tracking-widest transition-all flex items-center gap-2">
+            🎨 Custom Template Designer
+          </Link>
+        </div>
       </header>
 
       {/* Main Grid */}
