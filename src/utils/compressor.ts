@@ -18,6 +18,10 @@ export interface StudentData {
   schoolLogo?: string; // Base64 image data URI of school logo
   orientation?: 'landscape' | 'portrait';
   customTemplateConfig?: string; // Compressed CustomTemplateConfig string for shared URLs
+  qrType?: 'url' | 'vcard'; // QR code contents type
+  lanyardText?: string;
+  lanyardColor?: string;
+  lanyardTextColor?: string;
 }
 
 export interface TemplateElement {
@@ -32,6 +36,7 @@ export interface TemplateElement {
   italic: boolean;
   enabled: boolean;
   side?: 'front' | 'back'; // side of the card it belongs to
+  fontFamily?: string;     // Custom Google Font Family
 }
 
 export interface CustomTemplateConfig {
@@ -113,6 +118,10 @@ interface CompactPayload {
   o?: 'l' | 'p'; // orientation
   ctc?: string;  // customTemplateConfig
   sl?: string;   // schoolLogo
+  qt?: 'u' | 'v'; // qrType ('u' for URL, 'v' for vCard)
+  lt?: string;   // lanyardText
+  lc?: string;   // lanyardColor
+  ltc?: string;  // lanyardTextColor
 }
 
 /**
@@ -138,6 +147,10 @@ export function compressStudentData(data: StudentData): string {
       o: data.orientation === 'portrait' ? 'p' : 'l',
       ctc: data.customTemplateConfig,
       sl: data.schoolLogo,
+      qt: data.qrType === 'vcard' ? 'v' : 'u',
+      lt: data.lanyardText,
+      lc: data.lanyardColor,
+      ltc: data.lanyardTextColor,
     };
     const jsonStr = JSON.stringify(compact);
     return LZString.compressToEncodedURIComponent(jsonStr);
@@ -202,6 +215,10 @@ export function decompressStudentData(token: string): StudentData | null {
             schoolLogo: compact.sl || '',
             orientation: compact.o === 'p' ? 'portrait' : 'landscape',
             customTemplateConfig: compact.ctc || '',
+            qrType: compact.qt === 'v' ? 'vcard' : 'url',
+            lanyardText: compact.lt || '',
+            lanyardColor: compact.lc || '',
+            lanyardTextColor: compact.ltc || '',
           };
         }
       }
@@ -234,6 +251,10 @@ export function decompressStudentData(token: string): StudentData | null {
           schoolLogo: compact.sl || '',
           orientation: compact.o === 'p' ? 'portrait' : 'landscape',
           customTemplateConfig: compact.ctc || '',
+          qrType: compact.qt === 'v' ? 'vcard' : 'url',
+          lanyardText: compact.lt || '',
+          lanyardColor: compact.lc || '',
+          lanyardTextColor: compact.ltc || '',
         };
       }
     }

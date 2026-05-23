@@ -19,16 +19,24 @@ An offline-first, client-side institutional ID Card Studio built on **Next.js 16
 
 ```mermaid
 graph TD
-    A[Template Designer /designer] -->|Extracts Pages & Saves Base64| B[(LocalStorage)]
-    A -->|Downloads| C[Scale Guideline Layouts]
+    A[Widescreen Dashboard] -->|Toggle Workspace Mode| B{Studio View Mode}
+    B -->|Single Mode| C[IDCardForm + IDCardPreview]
+    B -->|Quick-List Mode| D[Interactive Spreadsheet Grid]
     
-    D[IDCardForm /] -->|Selects presets or| B
-    D -->|Compresses coordinates & data| E[StudentData URL Token]
-    E -->|Generates link| F[URL Sharing Viewer /id/*]
+    D -->|Click Row| E[Active Preview Panel]
+    D -->|Launch Modal| F[Signature Drawing Pad & PNG Upload]
+    D -->|Inline Upload| G[Base64 Student Photo Encoder]
     
-    G[Bulk Batch Compiler /bulk] -->|Excel Parsing reads ID| B
-    G -->|Dynamic sizes render| H[Offscreen Flat Canvas]
-    H -->|Prints side-by-side| I[A4 Print Layout PDF]
+    E -->|Interactive 3D Mockup| H[Acrylic Holder & Branded Lanyard View]
+    E -->|Select Style| I[Google Web Fonts Stylesheets Loader]
+    E -->|Toggle Contact QR| J[vCard v3.0 Offline VCF Compiler]
+    
+    D -->|Click Batch Compile| K{Offline Render Engine}
+    K -->|Loop Offscreen| L[IDCardFace flat canvas]
+    L -->|JSZip packager| M[PVC PNG ZIP Archive]
+    L -->|jsPDF compiler| N[A4 Multi-page Print PDF]
+    
+    O[Template Designer] -->|JSON Import/Export| P[Offline schema backup / share]
 ```
 
 ---
@@ -41,19 +49,22 @@ graph TD
 * **Signature Canvas & Asset Pack**: Includes an interactive touch/mouse canvas to capture digital signatures instantly, combined with an optimized preloaded avatars gallery.
 * **Compact URL Packing**: Converts photos, signatures, and logos into scaled WebP data structures, running them through compression to fit inside a single browser address bar link.
 
-### 2. 🎨 Visual Template Designer (`/designer`)
+### 2. 📑 Widescreen Quick-List Spreadsheet Grid (New!)
+* **Interactive Spreadsheet Row Editor**: Toggle from the single card view to a widescreen, glassmorphic student table grid. Users can input rows of student details (Name, Student ID, Class, Role, School Name, Phone, Email, Blood Group) entirely offline.
+* **Inline Avatar & Signature Uploads**: Supports click-to-upload files directly within table cells. Features a stylish circular photo preview and an **interactive drawing canvas signature box** to sign with touch or mouse pointers.
+* **Synchronized Live Previews**: Clicking on any row in the spreadsheet makes it the *Active Row*, immediately rendering that student's card in the live 3D preview container on the right.
+* **One-Click Offline Batch Compiler**: Seamlessly generates and downloads individual high-fidelity CR80 PVC-ready PNGs packed in a ZIP file, or compiles a multi-page, center-aligned A4 layout PDF with cut lines for manual printing.
+
+### 3. 🎨 Visual Template Designer (`/designer`)
 * **Background Extraction**: Integrates client-side **PDF.js** rendering. Users can upload standard portrait or landscape high-res multi-page PDF/PNG guidelines, extracting Front and Back backgrounds dynamically.
 * **Absolute Grid Canvas**: Features drag-and-drop and real-time bounding box resize handles mapping elements using relative percentage vectors (`x`, `y`, `w`, `h` from `0` to `100`).
 * **Keyboard Nudge Mechanics**: Precision adjusting lets users select fields and nudge them in `1%` increments using keyboard arrow keys.
-* **Custom Typography Panel**: Features sliders for font sizing, dynamic weight toggles (Bold/Italic), text alignment grids (`Left`/`Center`/`Right`), text color selectors, and custom coordinates mapping.
+* **JSON Layout Import & Export**: Back up, restore, or transfer custom designer layouts instantly. Layout bundles pack dimensions, element positions, custom fonts, and base64 template backgrounds in a lightweight, single `.json` schema file.
 
-### 3. 📊 Multi-Page Bulk Batch Compiler (`/bulk`)
-* **Auto-Orientation Selector**: Reads template schemas dynamically; custom spreadsheet templates starting with `custom-` automatically determine whether cards compile in landscape or portrait.
-* **ZIP Archive Resolver**: Parses columns in standard spreadsheets matching student images and institution logos, resolving files locally from uploaded photos ZIP directories completely in-browser.
-* **A4 Grid Auto-Centerer**: Automatically divides cards (up to 10 per page) into 2-column print layouts. The mathematical centering matches:
-  $$\text{Margin Offset} = \frac{\text{A4 Width (210mm)} - (2 \times \text{Card Width} + \text{Gap (15mm)})}{2}$$
-  This provides pixel-perfect cut lines and center folds for double-sided print sheets.
-* **Self-Contained Sample Formats**: Users can download a pre-packaged ZIP containing standard columns (Name, ID, Class, School, Phone, Blood Group, Photo Filename, School Logo, Template) with sample mock images ready to verify layout compilation.
+### 4. 💎 Advanced Offline Premium Extensions
+* **🔠 Dynamic Google Fonts Selector**: Select premium, modern typography per text element in the designer sidebar (e.g., *Outfit*, *Space Grotesk*, *Playfair Display*, *Inter*, *Fira Code*, *Bungee*, *Montserrat*, *Lora*, etc.). Appends stylesheet links in the head dynamically for instant DOM and print canvas loading.
+* **📇 vCard (VCF v3.0) QR Code Generator**: Switches card QR codes from online URL share trackers to offline electronic business cards. Scanning the card instantly opens a mobile contact prompt to save the student's complete profile.
+* **📿 3D Acrylic Case & Color-Synchronized Lanyard**: Hangs the 3D card inside a transparent gloss-glass acrylic cover supported by a draped fabric lanyard ribbon. The lanyard color automatically matches the template accent, repeating logo watermarks (e.g., `DPS • DPS • DPS`) along the strap.
 
 ---
 
@@ -80,6 +91,7 @@ export interface CompactPayload {
   gS?: string;  // digital signature Base64
   sl?: string;  // school logo Base64
   o?: 'portrait' | 'landscape'; // card orientation
+  qt?: 'u' | 'v'; // QR code type ('u' for URL, 'v' for vCard)
   cc?: string;  // compressed inline template coordinates config
 }
 ```
@@ -92,7 +104,7 @@ export interface CompactPayload {
 * **Core Engine**: React 19 (Hooks, Context, Client/Server routing splits)
 * **Styling**: Tailwind CSS v4 & Vanilla CSS variables
 * **Icons**: `lucide-react`
-* **Layout Parsing**: `xlsx` (SheetJS)
+* **Layout Parsing**: `xlsx` (SheetJS) & `jszip`
 * **Compression**: `lz-string` (Lempel-Ziv-Welch URL safe tokens)
 * **File Operations**: `jszip` & `file-saver` (batch package compilation)
 * **QR Codes**: `qrcode`
@@ -109,14 +121,14 @@ idcardgen/
 ├── public/                 # Static assets & sample templates
 ├── src/
 │   ├── app/                # Next.js App Router Page Tree
-│   │   ├── bulk/           # /bulk - Batch sheet generator layout
+│   │   ├── bulk/           # /bulk - Batch Excel sheet generator layout
 │   │   ├── designer/       # /designer - Drag-and-drop template designer workspace
 │   │   ├── id/             # /id/[token] - Single-card digital verification link
 │   │   ├── layout.tsx      # Core viewport wrappers & Google Fonts injection
-│   │   └── page.tsx        # Homepage - Single generator funnel
+│   │   └── page.tsx        # Homepage - Single generator & Quick-List Spreadsheet Modes
 │   ├── components/         # High-Performance UI Components
-│   │   ├── IDCardForm.tsx  # Dynamic Details Form (avtar, sig-pad, logo upload)
-│   │   └── IDCardPreview.tsx # 3D Deck, Emblems, and Custom ID Card Face
+│   │   ├── IDCardForm.tsx  # Dynamic Details Form (avatar, sig-pad, logo upload)
+│   │   └── IDCardPreview.tsx # 3D Deck, Acrylic Case/Lanyard, and custom ID Card Face
 │   └── utils/              # Utility Functions
 │       ├── avatars.ts      # Stylized preloaded mock avatar profiles
 │       └── compressor.ts   # LZString encoders/decoders & image resizing bounds

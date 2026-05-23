@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { StudentData, CustomTemplateConfig, compressCustomTemplate, resizeAndCompressImage } from '../utils/compressor';
+import { StudentData, resizeAndCompressImage } from '../utils/compressor';
 import { PRESET_AVATARS } from '../utils/avatars';
-import { Upload, X, Trash2, Edit3, Image as ImageIcon, Sliders, Palette, Shield } from 'lucide-react';
+import { Upload, X, Trash2, Edit3, Image as ImageIcon, Palette, Shield, User, Info } from 'lucide-react';
 
 interface IDCardFormProps {
   value: StudentData;
@@ -11,12 +11,10 @@ interface IDCardFormProps {
   onSubmit: () => void;
 }
 
-
 export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProps) {
   const [photoError, setPhotoError] = useState('');
   const [logoError, setLogoError] = useState('');
   const [isDrawing, setIsDrawing] = useState(false);
-  const [customTemplates, setCustomTemplates] = useState<CustomTemplateConfig[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -69,30 +67,16 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
     logoInputRef.current?.click();
   };
 
-
-  // Load custom templates from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const savedStr = localStorage.getItem('id-templates') || '[]';
-        const saved = JSON.parse(savedStr) as CustomTemplateConfig[];
-        setCustomTemplates(saved);
-      } catch (e) {
-        console.error('Failed to load custom templates in IDCardForm:', e);
-      }
-    }
-  }, []);
-
   // Initialize Signature Canvas settings on mount
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    
+
     // Clear to transparent
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // If there is an existing signature, draw it on the canvas
     if (value.signature) {
       const img = new Image();
@@ -110,55 +94,6 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
       ...value,
       [name]: val,
     });
-  };
-
-
-  // Portrait templates
-  const PORTRAIT_TEMPLATES: StudentData['template'][] = ['cbse-portrait', 'saffron-portrait', 'green-portrait'];
-  // Landscape templates
-  const LANDSCAPE_TEMPLATES: StudentData['template'][] = ['navy-landscape', 'maroon-landscape', 'tricolor-landscape'];
-
-  // Select ID Card Design Template — also syncs orientation
-  const handleTemplateSelect = (template: StudentData['template']) => {
-    if (template.startsWith('custom-')) {
-      const customT = customTemplates.find(t => t.id === template);
-      if (customT) {
-        const compressedConfig = compressCustomTemplate(customT, false); // omit local base64 background to fit URL
-        onChange({
-          ...value,
-          template,
-          orientation: customT.orientation,
-          colorTheme: customT.themeColor || '#ffffff',
-          customTemplateConfig: compressedConfig
-        });
-        return;
-      }
-    }
-    
-    const isPortrait = PORTRAIT_TEMPLATES.includes(template);
-    onChange({
-      ...value,
-      template,
-      orientation: isPortrait ? 'portrait' : 'landscape',
-      colorTheme: '#ffffff',
-      customTemplateConfig: undefined // Clear custom config for standard templates
-    });
-  };
-
-  // Switching orientation picks the first matching template in that group
-  const handleOrientationChange = (o: 'landscape' | 'portrait') => {
-    const currentIsPortrait = value.orientation === 'portrait';
-    const switchingGroup = (o === 'portrait') !== currentIsPortrait;
-    
-    if (switchingGroup) {
-      // If switching to portrait/landscape, try to find a custom template or fallback
-      const matchingCustom = customTemplates.find(t => t.orientation === o);
-      const newTemplate = matchingCustom 
-        ? matchingCustom.id 
-        : (o === 'portrait' ? PORTRAIT_TEMPLATES[0] : LANDSCAPE_TEMPLATES[0]);
-      
-      handleTemplateSelect(newTemplate as StudentData['template']);
-    }
   };
 
   // Process and Compress Image Files
@@ -182,7 +117,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
       const reader = new FileReader();
       reader.onload = async (event) => {
         const rawDataUrl = event.target?.result as string;
-        // Downscale it to extremely small footprint (96x96 or 120x120px WebP at 0.6 quality)
+        // Downscale it to extremely small footprint (WebP-style compression)
         const compressed = await resizeAndCompressImage(rawDataUrl, 100, 133, 0.65);
         onChange({
           ...value,
@@ -219,12 +154,12 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
   const getCanvasCoords = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-    
+
     const rect = canvas.getBoundingClientRect();
-    
+
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    
+
     return {
       x: ((clientX - rect.left) / rect.width) * canvas.width,
       y: ((clientY - rect.top) / rect.height) * canvas.height,
@@ -239,12 +174,12 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
     if (!ctx) return;
 
     const coords = getCanvasCoords(e);
-    
+
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    
+
     ctx.beginPath();
     ctx.moveTo(coords.x, coords.y);
     setIsDrawing(true);
@@ -283,7 +218,7 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
   const saveSignature = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    
+
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = 120;
     tempCanvas.height = 48;
@@ -303,429 +238,420 @@ export default function IDCardForm({ value, onChange, onSubmit }: IDCardFormProp
   };
 
   return (
-    <div className="w-full flex flex-col gap-6 font-mono text-[11px]">
-      
-      {/* A. Template — 6 Indian school designs in 2 groups */}
-      <div className="flex flex-col gap-2">
-        <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
-          <Palette className="w-3.5 h-3.5" />
-          Design Template
-        </label>
+    <div className="w-full flex flex-col gap-6 font-mono text-[11px] text-[#e4e4e7]">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        
+        {/* Column 1: SECTION 1: Personal Profile Details */}
+        <div className="relative overflow-hidden bg-zinc-950/20 border border-zinc-900/80 rounded-2xl p-5 hover:border-zinc-800/40 transition-all duration-300 flex flex-col gap-5">
+          <h3 className="text-[10px] font-bold text-white uppercase tracking-widest flex items-center gap-2 border-b border-zinc-900/80 pb-3 mb-1.5">
+            <User className="w-3.5 h-3.5 text-zinc-500" />
+            Personal Profile Details
+          </h3>
 
-        {/* Portrait group */}
-        <div className="flex flex-col gap-0">
-          <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest px-1 pb-1">Portrait (Vertical)</div>
-          <div className="grid grid-cols-3 gap-0 border border-zinc-800">
-            {([
-              { id: 'cbse-portrait', label: 'CBSE', sub: 'Navy' },
-              { id: 'saffron-portrait', label: 'KV', sub: 'Saffron' },
-              { id: 'green-portrait', label: 'NVS', sub: 'Green' },
-            ] as const).map((t, i) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => handleTemplateSelect(t.id)}
-                className={`py-2.5 px-1 flex flex-col items-center gap-0.5 text-center transition-all cursor-pointer ${
-                  i < 2 ? 'border-r border-zinc-800' : ''
-                } ${
-                  value.template === t.id
-                    ? 'bg-white text-black'
-                    : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
-                }`}
-              >
-                <span className="text-[9px] font-black uppercase tracking-wider">{t.label}</span>
-                <span className={`text-[7px] font-bold uppercase tracking-wide ${
-                  value.template === t.id ? 'text-zinc-600' : 'text-zinc-700'
-                }`}>{t.sub}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Landscape group */}
-        <div className="flex flex-col gap-0">
-          <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest px-1 pb-1">Landscape (Horizontal)</div>
-          <div className="grid grid-cols-3 gap-0 border border-zinc-800">
-            {([
-              { id: 'navy-landscape', label: 'DPS', sub: 'Navy' },
-              { id: 'maroon-landscape', label: 'Heritage', sub: 'Maroon' },
-              { id: 'tricolor-landscape', label: 'National', sub: 'Tricolor' },
-            ] as const).map((t, i) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => handleTemplateSelect(t.id)}
-                className={`py-2.5 px-1 flex flex-col items-center gap-0.5 text-center transition-all cursor-pointer ${
-                  i < 2 ? 'border-r border-zinc-800' : ''
-                } ${
-                  value.template === t.id
-                    ? 'bg-white text-black'
-                    : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
-                }`}
-              >
-                <span className="text-[9px] font-black uppercase tracking-wider">{t.label}</span>
-                <span className={`text-[7px] font-bold uppercase tracking-wide ${
-                  value.template === t.id ? 'text-zinc-600' : 'text-zinc-700'
-                }`}>{t.sub}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Custom templates group */}
-        {customTemplates.length > 0 && (
-          <div className="flex flex-col gap-0">
-            <div className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest px-1 pb-1">Custom Templates</div>
-            <div className="grid grid-cols-3 gap-1">
-              {customTemplates.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => handleTemplateSelect(t.id)}
-                  className={`py-2 px-1 flex flex-col items-center gap-0.5 text-center transition-all cursor-pointer border border-zinc-800 ${
-                    value.template === t.id
-                      ? 'bg-white text-black border-white'
-                      : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
-                  }`}
-                >
-                  <span className="text-[8.5px] font-black uppercase tracking-wider truncate max-w-full block" title={t.name}>{t.name}</span>
-                  <span className={`text-[6.5px] font-bold uppercase tracking-wide ${
-                    value.template === t.id ? 'text-zinc-600' : 'text-zinc-700'
-                  }`}>{t.orientation}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* B. Orientation — read-only indicator (auto-set by template) */}
-      <div className="flex flex-col gap-1.5">
-        <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
-          <Sliders className="w-3.5 h-3.5" />
-          Orientation
-          <span className="ml-auto text-[8px] text-zinc-600 normal-case tracking-normal font-normal">auto-set by template</span>
-        </label>
-        <div className="grid grid-cols-2 gap-0 border border-zinc-800">
-          {(['portrait', 'landscape'] as const).map((o) => (
-            <button
-              key={o}
-              type="button"
-              onClick={() => handleOrientationChange(o)}
-              className={`py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                o === 'portrait' ? 'border-r border-zinc-800' : ''
-              } ${
-                (value.orientation || 'landscape') === o
-                  ? 'bg-white text-black font-black'
-                  : 'bg-black text-zinc-500 hover:text-white hover:bg-zinc-900/50'
+          {/* Photo Deck */}
+          <div className="flex flex-col sm:flex-row gap-4 items-center bg-zinc-950/40 p-4 border border-zinc-900/60 rounded-xl">
+            {/* Dropzone with absolute clean transitions */}
+            <div
+              onClick={triggerFileSelect}
+              className={`w-24 h-32 border flex flex-col items-center justify-center p-2 text-center cursor-pointer transition-all duration-200 shrink-0 rounded-lg ${
+                value.avatar
+                  ? 'border-zinc-700 bg-zinc-900/25'
+                  : 'border-zinc-850 hover:border-zinc-500 bg-zinc-950/70 border-dashed'
               }`}
             >
-              {o}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* D. Photo */}
-      <div className="flex flex-col gap-2 border border-zinc-800 p-4 bg-black">
-        <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
-          <ImageIcon className="w-3.5 h-3.5" />
-          Photo
-        </label>
-        
-        <div className="flex flex-col sm:flex-row gap-4 items-center mt-1">
-          {/* Stark Dropzone Frame */}
-          <div 
-            onClick={triggerFileSelect}
-            className={`w-24 h-32 border flex flex-col items-center justify-center p-2 text-center cursor-pointer transition-all duration-200 shrink-0 ${
-              value.avatar 
-                ? 'border-zinc-700 bg-zinc-900/20' 
-                : 'border-zinc-800 hover:border-zinc-500 bg-black'
-            }`}
-          >
-            {value.avatar ? (
-              <div className="relative w-full h-full">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img 
-                  src={value.avatar} 
-                  alt="Avatar" 
-                  className="w-full h-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removePhoto();
-                  }}
-                  className="absolute -top-1.5 -right-1.5 p-0.5 bg-black border border-zinc-800 text-white hover:text-rose-400 transition-colors"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-1">
-                <Upload className="w-4 h-4 text-zinc-600 hover:text-white" />
-                <span className="text-[8px] text-zinc-500 uppercase tracking-tighter">
-                  UPLOAD
-                </span>
-              </div>
-            )}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoUpload}
-              className="hidden"
-            />
-          </div>
-
-          {/* Preset avatars */}
-          <div className="flex-1 flex flex-col gap-2 w-full">
-            <span className="text-[9px] text-zinc-500 uppercase tracking-wider">Or choose a preset avatar:</span>
-            <div className="flex items-center gap-2">
-              {PRESET_AVATARS.map((av) => (
-                <button
-                  key={av.id}
-                  type="button"
-                  onClick={() => handlePresetAvatarSelect(av.url)}
-                  className={`w-10 h-13 overflow-hidden border transition-all cursor-pointer ${
-                    value.avatar === av.url ? 'border-white scale-105' : 'border-zinc-800 hover:border-zinc-650'
-                  }`}
-                  title={av.name}
-                >
+              {value.avatar ? (
+                <div className="relative w-full h-full rounded-md overflow-hidden">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={av.url} alt={av.name} className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-            {photoError && <p className="text-[9px] text-rose-500 font-bold mt-1">{photoError}</p>}
-            <p className="text-[8px] text-zinc-600 leading-normal max-w-sm mt-1">
-              Preset avatars work offline and render crisply at any resolution.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* E. Fields */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Full Name</label>
-          <input
-            type="text"
-            name="name"
-            placeholder="JANE DOE"
-            value={value.name}
-            onChange={handleInputChange}
-            className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Student ID</label>
-          <input
-            type="text"
-            name="idNumber"
-            placeholder="STU-2026-0042"
-            value={value.idNumber}
-            onChange={handleInputChange}
-            className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Institution</label>
-          <div className="flex gap-2 items-center">
-            <input
-              type="text"
-              name="school"
-              placeholder="ACADEMIA INSTITUTE"
-              value={value.school}
-              onChange={handleInputChange}
-              className="flex-1 bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none"
-              required
-            />
-            {/* Custom Logo upload block */}
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={triggerLogoSelect}
-                className={`h-[38px] px-3 border border-zinc-800 bg-black text-[9px] hover:text-white hover:border-zinc-500 transition-colors uppercase font-bold flex items-center gap-1.5 cursor-pointer`}
-              >
-                {value.schoolLogo ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={value.schoolLogo} alt="Logo" className="w-5 h-5 object-contain" />
-                    <span>Change</span>
-                  </>
-                ) : (
-                  <>
-                    <Upload className="w-3 h-3" />
-                    <span>Logo</span>
-                  </>
-                )}
-              </button>
-              {value.schoolLogo && (
-                <button
-                  type="button"
-                  onClick={removeLogo}
-                  className="absolute -top-1 -right-1 p-0.5 bg-black border border-zinc-800 text-white hover:text-rose-400 rounded-none cursor-pointer"
-                  title="Remove Logo"
-                >
-                  <X className="w-2 h-2" />
-                </button>
+                  <img
+                    src={value.avatar}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removePhoto();
+                    }}
+                    className="absolute -top-1.5 -right-1.5 p-0.5 bg-black border border-zinc-800 text-white hover:text-rose-450 rounded-full transition-colors z-20 cursor-pointer"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-1.5">
+                  <Upload className="w-4 h-4 text-zinc-550 hover:text-white transition-colors" />
+                  <span className="text-[8px] text-zinc-500 uppercase tracking-wider font-bold">
+                    UPLOAD
+                  </span>
+                </div>
               )}
               <input
-                ref={logoInputRef}
+                ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                onChange={handleLogoUpload}
+                onChange={handlePhotoUpload}
                 className="hidden"
               />
             </div>
+
+            {/* Presets and Guidelines */}
+            <div className="flex-1 flex flex-col gap-2.5 w-full">
+              <span className="text-[8px] text-zinc-500 uppercase tracking-widest font-black">Preset Avatars</span>
+              <div className="flex items-center gap-2">
+                {PRESET_AVATARS.map((av) => (
+                  <button
+                    key={av.id}
+                    type="button"
+                    onClick={() => handlePresetAvatarSelect(av.url)}
+                    className={`w-10 h-13 overflow-hidden border transition-all cursor-pointer rounded-md ${
+                      value.avatar === av.url 
+                        ? 'border-white scale-105 shadow-md' 
+                        : 'border-zinc-850 hover:border-zinc-650'
+                    }`}
+                    title={av.name}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={av.url} alt={av.name} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+              {photoError && <p className="text-[9px] text-rose-500 font-bold mt-1">{photoError}</p>}
+              <p className="text-[8px] text-zinc-600 leading-normal uppercase">
+                Offline-ready presets render perfectly at high resolution.
+              </p>
+            </div>
           </div>
-          {logoError && <p className="text-[9px] text-rose-500 font-bold mt-1">{logoError}</p>}
-        </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Class / Section</label>
-          <input
-            type="text"
-            name="grade"
-            placeholder="COMPUTER SCIENCE"
-            value={value.grade}
-            onChange={handleInputChange}
-            className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none"
-            required
-          />
-        </div>
+          {/* Inputs Core Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            
+            <div className="flex flex-col gap-1.5 col-span-1 sm:col-span-2">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Full Name</label>
+              <input
+                type="text"
+                name="name"
+                placeholder="JANE DOE"
+                value={value.name}
+                onChange={handleInputChange}
+                className="w-full bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 transition-all duration-200 placeholder:text-zinc-700"
+                required
+              />
+            </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Role</label>
-          <select
-            name="role"
-            value={value.role}
-            onChange={handleInputChange}
-            className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none"
-          >
-            <option value="STUDENT">STUDENT</option>
-            <option value="FACULTY">FACULTY</option>
-            <option value="STAFF">STAFF</option>
-            <option value="VISITOR">VISITOR</option>
-            <option value="ALUMNI">ALUMNI</option>
-          </select>
-        </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Student ID</label>
+              <input
+                type="text"
+                name="idNumber"
+                placeholder="STU-2026-0042"
+                value={value.idNumber}
+                onChange={handleInputChange}
+                className="w-full bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 transition-all duration-200 placeholder:text-zinc-700"
+                required
+              />
+            </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Issue Date</label>
-            <input
-              type="text"
-              name="issueDate"
-              placeholder="08/2025"
-              value={value.issueDate}
-              onChange={handleInputChange}
-              className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-[11px] font-mono text-zinc-200 focus:border-white focus:outline-none"
-            />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Class / Section</label>
+              <input
+                type="text"
+                name="grade"
+                placeholder="COMPUTER SCIENCE"
+                value={value.grade}
+                onChange={handleInputChange}
+                className="w-full bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 transition-all duration-200 placeholder:text-zinc-700"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Role</label>
+              <select
+                name="role"
+                value={value.role}
+                onChange={handleInputChange}
+                className="w-full bg-zinc-950 border border-zinc-850 rounded-lg py-2 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 transition-all duration-200 cursor-pointer"
+              >
+                <option value="STUDENT">STUDENT</option>
+                <option value="FACULTY">FACULTY</option>
+                <option value="STAFF">STAFF</option>
+                <option value="VISITOR">VISITOR</option>
+                <option value="ALUMNI">ALUMNI</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Issue Date</label>
+                <input
+                  type="text"
+                  name="issueDate"
+                  placeholder="04/2025"
+                  value={value.issueDate}
+                  onChange={handleInputChange}
+                  className="w-full bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-2 text-[11px] font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 placeholder:text-zinc-700"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Expiry Date</label>
+                <input
+                  type="text"
+                  name="expiryDate"
+                  placeholder="03/2026"
+                  value={value.expiryDate}
+                  onChange={handleInputChange}
+                  className="w-full bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-2 text-[11px] font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 placeholder:text-zinc-700"
+                />
+              </div>
+            </div>
+
+            {/* Contact Details Panel */}
+            <div className="flex flex-col gap-1.5 col-span-1 sm:col-span-2">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Email Address</label>
+              <input
+                type="email"
+                name="email"
+                placeholder="J.DOE@ACADEMIA.EDU"
+                value={value.email}
+                onChange={handleInputChange}
+                className="w-full bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 transition-all duration-200 placeholder:text-zinc-700"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Phone Number</label>
+              <input
+                type="text"
+                name="phone"
+                placeholder="+91 98765 43210"
+                value={value.phone}
+                onChange={handleInputChange}
+                className="w-full bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 transition-all duration-200 placeholder:text-zinc-700"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Blood Group</label>
+              <input
+                type="text"
+                name="bloodGroup"
+                placeholder="O+"
+                value={value.bloodGroup}
+                onChange={handleInputChange}
+                className="w-full bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 transition-all duration-200 placeholder:text-zinc-700"
+              />
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Expiry Date</label>
-            <input
-              type="text"
-              name="expiryDate"
-              placeholder="08/2026"
-              value={value.expiryDate}
-              onChange={handleInputChange}
-              className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-[11px] font-mono text-zinc-200 focus:border-white focus:outline-none"
-            />
+
+          {/* Signature Drawer Box */}
+          <div className="flex flex-col gap-2.5 mt-2 bg-zinc-950/30 p-4 border border-zinc-900/60 rounded-xl">
+            <div className="flex items-center justify-between">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                <Edit3 className="w-3.5 h-3.5 text-zinc-550" />
+                Signature Drawer
+              </label>
+              <button
+                type="button"
+                onClick={clearSignature}
+                className="text-[8px] font-bold uppercase tracking-wider text-rose-500 hover:text-rose-400 transition-colors flex items-center gap-1 cursor-pointer"
+              >
+                <Trash2 className="w-3 h-3" />
+                Clear
+              </button>
+            </div>
+            <div className="relative w-full overflow-hidden border border-zinc-850 bg-zinc-950/90 rounded-lg">
+              <canvas
+                ref={canvasRef}
+                width={300}
+                height={100}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                className="w-full h-24 sig-canvas cursor-crosshair"
+              />
+              <div className="absolute bottom-1 right-2 pointer-events-none text-[7px] text-zinc-700 font-bold uppercase tracking-widest select-none">
+                Draw Signature Here
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Email</label>
-          <input
-            type="email"
-            name="email"
-            placeholder="J.DOE@ACADEMIA.EDU"
-            value={value.email}
-            onChange={handleInputChange}
-            className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none"
-          />
-        </div>
+        {/* Column 2: SECTION 2: Branding & Lanyard Engine + Generate Button */}
+        <div className="flex flex-col gap-6 w-full items-stretch">
+          <div className="relative overflow-hidden bg-zinc-950/20 border border-zinc-900/80 rounded-2xl p-5 hover:border-zinc-800/40 transition-all duration-300 flex flex-col gap-5">
+            <h3 className="text-[10px] font-bold text-white uppercase tracking-widest flex items-center gap-2 border-b border-zinc-900/80 pb-3 mb-1.5">
+              <Palette className="w-3.5 h-3.5 text-zinc-500" />
+              Branding & Lanyard Engine
+            </h3>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Phone</label>
-            <input
-              type="text"
-              name="phone"
-              placeholder="+1 234 567"
-              value={value.phone}
-              onChange={handleInputChange}
-              className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-[11px] font-mono text-zinc-200 focus:border-white focus:outline-none"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[9.5px] font-bold text-zinc-500 uppercase tracking-widest">Blood Group</label>
-            <input
-              type="text"
-              name="bloodGroup"
-              placeholder="O+"
-              value={value.bloodGroup}
-              onChange={handleInputChange}
-              className="w-full bg-black border border-zinc-800 rounded-none py-2.5 px-3 text-[11px] font-mono text-zinc-200 focus:border-white focus:outline-none"
-            />
-          </div>
-        </div>
-      </div>
+            {/* Institution and School Logo */}
+            <div className="flex flex-col gap-3">
+              <label className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Institution & Branding Logo</label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  name="school"
+                  placeholder="DELHI PUBLIC SCHOOL"
+                  value={value.school}
+                  onChange={handleInputChange}
+                  className="flex-1 bg-zinc-950/60 border border-zinc-850 rounded-lg py-2 px-3 text-xs font-mono text-zinc-200 focus:border-white focus:outline-none focus:ring-1 focus:ring-white/5 transition-all duration-200"
+                  required
+                />
+                <div className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={triggerLogoSelect}
+                    className="h-[32px] px-3 border border-zinc-850 bg-zinc-900/30 text-[8.5px] hover:text-white hover:border-zinc-500 rounded-lg transition-colors uppercase font-bold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {value.schoolLogo ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={value.schoolLogo} alt="Logo" className="w-4 h-4 object-contain rounded-sm" />
+                        <span>Change</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-3 h-3 text-zinc-550" />
+                        <span>Logo</span>
+                      </>
+                    )}
+                  </button>
+                  {value.schoolLogo && (
+                    <button
+                      type="button"
+                      onClick={removeLogo}
+                      className="absolute -top-1 -right-1 p-0.5 bg-black border border-zinc-800 text-white hover:text-rose-450 rounded-full cursor-pointer z-10"
+                      title="Remove Logo"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+              {logoError && <p className="text-[9px] text-rose-500 font-bold mt-1">{logoError}</p>}
+            </div>
 
-      {/* F. Signature */}
-      <div className="flex flex-col gap-2 border border-zinc-800 p-4 bg-black mt-2">
-        <div className="flex items-center justify-between">
-          <label className="text-[10px] font-bold tracking-widest text-zinc-500 uppercase flex items-center gap-1.5">
-            <Edit3 className="w-3.5 h-3.5" />
-            Signature
-          </label>
+            {/* QR Code Segment Switcher */}
+            <div className="flex flex-col gap-2.5 bg-zinc-950/30 p-4 border border-zinc-900/60 rounded-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between py-1 gap-2">
+                <span className="text-[8.5px] text-zinc-500 font-bold uppercase tracking-widest">QR Code Data Mode</span>
+                <div className="flex bg-zinc-950 p-0.5 border border-zinc-900 rounded-lg shrink-0 gap-0.5">
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...value, qrType: 'url' })}
+                    className={`px-3 py-1.5 text-[8px] uppercase font-bold transition-all rounded-md cursor-pointer ${
+                      value.qrType !== 'vcard' 
+                        ? 'bg-white text-black font-black shadow-sm' 
+                        : 'text-zinc-500 hover:text-zinc-300 bg-transparent'
+                    }`}
+                  >
+                    Share URL
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...value, qrType: 'vcard' })}
+                    className={`px-3 py-1.5 text-[8px] uppercase font-bold transition-all rounded-md cursor-pointer ${
+                      value.qrType === 'vcard' 
+                        ? 'bg-white text-black font-black shadow-sm' 
+                        : 'text-zinc-500 hover:text-zinc-300 bg-transparent'
+                    }`}
+                  >
+                    vCard Contact
+                  </button>
+                </div>
+              </div>
+              <p className="text-[8px] text-zinc-650 leading-normal uppercase">
+                {value.qrType === 'vcard'
+                  ? "vCard Contact details compile offline for direct camera scanning."
+                  : "Share URL creates secure verified cloud verification link."
+                }
+              </p>
+            </div>
+
+            {/* Lanyard Customizer Engine */}
+            <div className="flex flex-col gap-4 bg-zinc-950/30 p-4 border border-zinc-900/60 rounded-xl">
+              <span className="text-[8.5px] font-bold text-zinc-500 uppercase tracking-widest">Lanyard Casing Customizer</span>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[8px] text-zinc-500 uppercase font-black">Lanyard Ribbon Text</span>
+                  <input
+                    type="text"
+                    name="lanyardText"
+                    placeholder="e.g. STUDENT"
+                    value={value.lanyardText || ''}
+                    onChange={handleInputChange}
+                    className="bg-zinc-950/60 border border-zinc-850 rounded-lg px-2.5 py-1.5 text-[10px] font-mono text-zinc-200 focus:border-white focus:outline-none uppercase"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[8px] text-zinc-500 uppercase font-black">Ribbon Color</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      name="lanyardColor"
+                      value={value.lanyardColor || value.colorTheme || '#1e3a5f'}
+                      onChange={handleInputChange}
+                      className="w-7 h-7 bg-transparent border-0 cursor-pointer rounded overflow-hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onChange({ ...value, lanyardColor: '' })}
+                      className="text-[7.5px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-300 border border-zinc-850 px-2 py-1 rounded cursor-pointer transition-colors bg-transparent"
+                    >
+                      Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 mt-1">
+                <span className="text-[8px] text-zinc-500 uppercase font-black">Ribbon Text Color</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    name="lanyardTextColor"
+                    value={value.lanyardTextColor || '#ffffff'}
+                    onChange={handleInputChange}
+                    className="w-7 h-7 bg-transparent border-0 cursor-pointer rounded overflow-hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onChange({ ...value, lanyardTextColor: '' })}
+                    className="text-[7.5px] font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-300 border border-zinc-850 px-2 py-1 rounded cursor-pointer transition-colors bg-transparent"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Generate Action Button */}
           <button
             type="button"
-            onClick={clearSignature}
-            className="text-[9px] font-bold uppercase tracking-wider text-rose-500 hover:text-rose-400 transition-colors flex items-center gap-1 cursor-pointer"
+            onClick={onSubmit}
+            className="w-full mt-2 py-3.5 px-6 bg-white hover:bg-zinc-200 text-black font-black text-[10px] uppercase tracking-widest transition-all cursor-pointer border border-white rounded-xl flex items-center justify-center gap-2 duration-200 active:scale-[0.98] shadow-lg shrink-0"
           >
-            <Trash2 className="w-3 h-3" />
-            Clear
+            <Shield className="w-4 h-4 text-black animate-pulse" />
+            <span>Generate Secure ID Card</span>
           </button>
         </div>
-        <div className="relative w-full overflow-hidden border border-zinc-800 bg-[#040404]">
-          <canvas
-            ref={canvasRef}
-            width={300}
-            height={100}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
-            className="w-full h-24 sig-canvas"
-          />
-          <div className="absolute bottom-1 right-2 pointer-events-none text-[7px] text-zinc-650 font-bold uppercase tracking-widest select-none">
-            Draw here
-          </div>
-        </div>
-      </div>
 
-      {/* G. Generate */}
-      <button
-        type="button"
-        onClick={onSubmit}
-        className="w-full mt-4 py-4 px-6 bg-white hover:bg-zinc-200 text-black font-black text-xs uppercase tracking-widest transition-all cursor-pointer border border-white rounded-none flex items-center justify-center gap-2"
-      >
-        <Shield className="w-4 h-4" />
-        <span>Generate ID Card</span>
-      </button>
+      </div>
     </div>
   );
 }

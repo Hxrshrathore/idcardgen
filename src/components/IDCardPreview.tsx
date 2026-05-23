@@ -5,6 +5,18 @@ import { StudentData, CustomTemplateConfig, decompressCustomTemplate } from '../
 import { User, RefreshCw, ShieldCheck, Phone, Mail, Droplets } from 'lucide-react';
 import QRCode from 'qrcode';
 
+export function loadGoogleFont(fontName: string) {
+  if (typeof window === 'undefined') return;
+  const id = `gfont-${fontName.toLowerCase().replace(/\s+/g, '-')}`;
+  if (document.getElementById(id)) return;
+
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
+  document.head.appendChild(link);
+}
+
 // Reusable helper to resolve a custom template layout
 export function getCustomTemplate(data: StudentData): CustomTemplateConfig | null {
   // 1. Try to decompress from data.customTemplateConfig if present
@@ -63,7 +75,9 @@ export function CustomIDCardFace({
   flat?: boolean;
 }) {
   const [qrUrl, setQrUrl] = useState<string>('');
-  const qrData = shareUrl || `${data.name} | ${data.idNumber} | ${data.school}`;
+  const qrData = data.qrType === 'vcard'
+    ? `BEGIN:VCARD\nVERSION:3.0\nN:${data.name || 'Student'};;;;\nFN:${data.name || 'Student'}\nORG:${data.school || 'School'}\nTITLE:${data.role || 'STUDENT'}\nTEL;TYPE=CELL:${data.phone || ''}\nEMAIL;TYPE=PREF,INTERNET:${data.email || ''}\nNOTE:Grade: ${data.grade || ''}\\nID: ${data.idNumber || ''}\\nBlood Group: ${data.bloodGroup || ''}\nEND:VCARD`
+    : (shareUrl || `${data.name} | ${data.idNumber} | ${data.school}`);
 
   useEffect(() => {
     QRCode.toDataURL(qrData, {
@@ -71,6 +85,16 @@ export function CustomIDCardFace({
       color: { dark: '#1e3a5f', light: '#ffffff' },
     }).then(setQrUrl).catch(console.error);
   }, [qrData]);
+
+  useEffect(() => {
+    if (customConfig && customConfig.elements) {
+      Object.values(customConfig.elements).forEach((el: any) => {
+        if (el && el.enabled && el.fontFamily) {
+          loadGoogleFont(el.fontFamily);
+        }
+      });
+    }
+  }, [customConfig]);
 
   const renderBarcode = (id: string, color = '#1e3a5f') => {
     const str = (id || 'STU-2026-0042').trim();
@@ -215,6 +239,7 @@ export function CustomIDCardFace({
                   whiteSpace: 'nowrap',
                   textOverflow: 'ellipsis',
                   overflow: 'hidden',
+                  fontFamily: el.fontFamily ? `'${el.fontFamily}', sans-serif` : "'Outfit', sans-serif",
                 }}
               >
                 {val}
@@ -276,21 +301,30 @@ export function CustomIDCardFace({
 interface IDCardPreviewProps {
   data: StudentData;
   isFlippedOverride?: boolean;
+  showMockupOverride?: boolean;
   shareUrl?: string;
 }
 
-export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDCardPreviewProps) {
+export default function IDCardPreview({ data, isFlippedOverride, showMockupOverride, shareUrl }: IDCardPreviewProps) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [isHovering, setIsHovering] = useState(false);
   const [qrUrl, setQrUrl] = useState<string>('');
+  const [showMockup, setShowMockup] = useState(true);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isFlippedOverride !== undefined) setIsFlipped(isFlippedOverride);
   }, [isFlippedOverride]);
 
-  const qrData = shareUrl || `${data.name} | ${data.idNumber} | ${data.school}`;
+  useEffect(() => {
+    if (showMockupOverride !== undefined) setShowMockup(showMockupOverride);
+  }, [showMockupOverride]);
+
+  const qrData = data.qrType === 'vcard'
+    ? `BEGIN:VCARD\nVERSION:3.0\nN:${data.name || 'Student'};;;;\nFN:${data.name || 'Student'}\nORG:${data.school || 'School'}\nTITLE:${data.role || 'STUDENT'}\nTEL;TYPE=CELL:${data.phone || ''}\nEMAIL;TYPE=PREF,INTERNET:${data.email || ''}\nNOTE:Grade: ${data.grade || ''}\\nID: ${data.idNumber || ''}\\nBlood Group: ${data.bloodGroup || ''}\nEND:VCARD`
+    : (shareUrl || `${data.name} | ${data.idNumber} | ${data.school}`);
+
   useEffect(() => {
     QRCode.toDataURL(qrData, {
       margin: 1, width: 160,
@@ -1471,8 +1505,8 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
   const isLandscape = isCustom && customConfig
     ? customConfig.orientation === 'landscape'
     : ['navy-landscape', 'maroon-landscape', 'tricolor-landscape'].includes(template);
-  const cardWidth = isLandscape ? 380 : 240;
-  const cardHeight = isLandscape ? 240 : 380;
+  const cardWidth = isLandscape ? 512 : 320;
+  const cardHeight = isLandscape ? 320 : 512;
 
   // ─── Pick Front/Back based on template ─────────────────────
   const renderFront = () => {
@@ -1522,9 +1556,28 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
   };
 
 
+  const getThemeColor = () => {
+    if (isCustom && customConfig) return customConfig.themeColor || data.colorTheme || '#1e3a5f';
+    switch (template) {
+      case 'cbse-portrait': return '#1e4d8c';
+      case 'saffron-portrait': return '#c45200';
+      case 'green-portrait': return '#047857';
+      case 'navy-landscape': return '#0f2552';
+      case 'maroon-landscape': return '#7c1030';
+      case 'tricolor-landscape': return '#000080';
+      default: return data.colorTheme || '#1e3a5f';
+    }
+  };
+
+  const schoolInitials = (data.school || 'School')
+    .split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || 'ID';
+
   // ─── WRAPPER + 3D FLIP ─────────────────────────────────────
   return (
     <div className="w-full flex flex-col items-center select-none" style={{ fontFamily: "'Outfit', sans-serif" }}>
+
+      {/* Lanyard container spacer */}
+      {showMockup && <div className="h-28 w-full pointer-events-none" />}
 
       {/* Size-only wrapper — never transformed */}
       <div
@@ -1545,6 +1598,68 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
           <RefreshCw className="w-2.5 h-2.5" />
           <span>Click to flip</span>
         </div>
+
+        {/* 3D Acrylic Case Overlay (crystal glassmorphic frame) */}
+        {showMockup && (
+          <div 
+            className="absolute pointer-events-none rounded-[10px] border-2 border-white/20 bg-white/5 backdrop-blur-[0.5px] shadow-2xl z-40"
+            style={{
+              inset: '-8px',
+              boxShadow: 'inset 0 0 12px rgba(255,255,255,0.15), 0 20px 40px rgba(0,0,0,0.6)',
+            }}
+          >
+            {/* Acrylic shiny diagonal light reflect */}
+            <div 
+              className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-80"
+              style={{
+                clipPath: 'polygon(0% 0%, 100% 0%, 0% 100%)'
+              }}
+            />
+            {/* Specular highlight lines */}
+            <div className="absolute top-1 left-1 right-1 h-px bg-white/30" />
+            <div className="absolute bottom-1 left-1 right-1 h-px bg-white/10" />
+          </div>
+        )}
+
+        {/* Strap slot connector at top */}
+        {showMockup && (
+          <div 
+            className="absolute -top-[16px] left-1/2 -translate-x-1/2 w-10 h-4 bg-white/10 rounded-t border-t border-x border-white/20 z-45 flex items-center justify-center pointer-events-none"
+            style={{ boxShadow: 'inset 0 0 4px rgba(255,255,255,0.1)' }}
+          >
+            <div className="w-5 h-1.5 bg-black/60 rounded-full border border-white/15" />
+          </div>
+        )}
+
+        {/* Lanyard Clip and Strap hanging */}
+        {showMockup && (
+          <>
+            {/* Lanyard Loop Strap (vector) */}
+            <div 
+              className="absolute -top-32 left-1/2 -translate-x-1/2 w-6 h-28 opacity-95 z-0 pointer-events-none flex flex-col items-center justify-end overflow-hidden"
+              style={{
+                background: `linear-gradient(to bottom, ${data.lanyardColor || getThemeColor()} 0%, ${data.lanyardColor || getThemeColor()} 85%, rgba(0,0,0,0.4) 100%)`,
+                clipPath: 'polygon(15% 0%, 85% 0%, 50% 100%)',
+                filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.4))'
+              }}
+            >
+              {/* Repeating initials text pattern synchronized with school color */}
+              <div 
+                className="text-[6.5px] font-black tracking-[0.2em] text-center uppercase py-1 flex flex-col justify-end gap-1 h-full font-mono select-none"
+                style={{ color: data.lanyardTextColor || 'rgba(255,255,255,0.6)' }}
+              >
+                <span>{data.lanyardText || schoolInitials}</span>
+                <span className="opacity-40">•</span>
+                <span>{data.lanyardText || schoolInitials}</span>
+              </div>
+            </div>
+
+            {/* Metal Swivel Clip */}
+            <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-3.5 h-6 bg-gradient-to-b from-zinc-300 via-zinc-400 to-zinc-650 rounded border border-white/15 shadow z-45 pointer-events-none flex flex-col items-center justify-center">
+              <div className="w-1 h-3.5 bg-zinc-800/60 rounded-sm border border-zinc-300/10" />
+            </div>
+          </>
+        )}
 
         {/* Tilt layer */}
         <div
@@ -1595,6 +1710,16 @@ export default function IDCardPreview({ data, isFlippedOverride, shareUrl }: IDC
           <RefreshCw className="w-3 h-3" />
           <span>Flip Card</span>
         </button>
+
+        {/* Glassmorphic Mockup Toggle Button */}
+        <button
+          type="button"
+          onClick={() => setShowMockup(prev => !prev)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider cursor-pointer transition-all border ${showMockup ? 'bg-zinc-800 text-white border-zinc-700' : 'bg-transparent text-zinc-500 border-zinc-900 hover:border-zinc-800'}`}
+        >
+          <span>Mockup: {showMockup ? 'ON' : 'OFF'}</span>
+        </button>
+
         <span className="text-[8px] tracking-wider" style={{ color: '#94a3b8' }}>
           CR80 · Hover to tilt
         </span>
@@ -1620,7 +1745,10 @@ export function IDCardFace({
   const [qrUrl, setQrUrl] = useState<string>('');
   const template = data.template || 'cbse-portrait';
 
-  const qrData = shareUrl || `${data.name} | ${data.idNumber} | ${data.school}`;
+  const qrData = data.qrType === 'vcard'
+    ? `BEGIN:VCARD\nVERSION:3.0\nN:${data.name || 'Student'};;;;\nFN:${data.name || 'Student'}\nORG:${data.school || 'School'}\nTITLE:${data.role || 'STUDENT'}\nTEL;TYPE=CELL:${data.phone || ''}\nEMAIL;TYPE=PREF,INTERNET:${data.email || ''}\nNOTE:Grade: ${data.grade || ''}\\nID: ${data.idNumber || ''}\\nBlood Group: ${data.bloodGroup || ''}\nEND:VCARD`
+    : (shareUrl || `${data.name} | ${data.idNumber} | ${data.school}`);
+
   useEffect(() => {
     QRCode.toDataURL(qrData, {
       margin: 1, width: 160,

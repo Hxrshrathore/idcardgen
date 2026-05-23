@@ -10,6 +10,31 @@ import {
 } from 'lucide-react';
 import { CustomTemplateConfig, TemplateElement, compressCustomTemplate } from '../../utils/compressor';
 
+export const PREMIUM_FONTS = [
+  'Outfit',
+  'Space Grotesk',
+  'Playfair Display',
+  'Inter',
+  'Fira Code',
+  'Bungee',
+  'Montserrat',
+  'Lora',
+  'Cinzel',
+  'Rubik Mono One'
+];
+
+export function loadGoogleFont(fontName: string) {
+  if (typeof window === 'undefined') return;
+  const id = `gfont-${fontName.toLowerCase().replace(/\s+/g, '-')}`;
+  if (document.getElementById(id)) return;
+
+  const link = document.createElement('link');
+  link.id = id;
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
+  document.head.appendChild(link);
+}
+
 // Dimensions in pixels (for workspace preview display)
 const CARD_PORTRAIT_W = 270;
 const CARD_PORTRAIT_H = 428;
@@ -64,6 +89,100 @@ export default function TemplateDesignerClient() {
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const dragStartRef = useRef<{ x: number; y: number; fieldX: number; fieldY: number } | null>(null);
   const resizeStartRef = useRef<{ x: number; y: number; fieldW: number; fieldH: number } | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  // Load Google Fonts for any active elements dynamically
+  useEffect(() => {
+    Object.keys(elements).forEach(key => {
+      const el = elements[key];
+      if (el.enabled && el.fontFamily) {
+        loadGoogleFont(el.fontFamily);
+      }
+    });
+  }, [elements]);
+
+  // Load all premium fonts at startup so the selector has previews
+  useEffect(() => {
+    PREMIUM_FONTS.forEach(font => loadGoogleFont(font));
+  }, []);
+
+  const handleExportTemplate = () => {
+    try {
+      const templateData = {
+        version: "1.0",
+        name: templateName,
+        orientation,
+        themeColor: elements.school?.color || '#1e3a5f',
+        frontBg,
+        backBg,
+        elements
+      };
+      const blob = new Blob([JSON.stringify(templateData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${templateName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-layout.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      alert('Failed to export template: ' + e.message);
+    }
+  };
+
+  const handleImportTemplate = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const imported = JSON.parse(text);
+
+        if (!imported.name || !imported.orientation || !imported.elements) {
+          throw new Error('Missing core template properties (name, orientation, or elements)');
+        }
+
+        if (typeof imported.elements !== 'object') {
+          throw new Error('Elements property must be an object representing the layout placeholders');
+        }
+
+        setTemplateName(imported.name);
+        setOrientation(imported.orientation);
+        setFrontBg(imported.frontBg || '');
+        setBackBg(imported.backBg || '');
+        
+        const mergedElements = {
+          ...(imported.orientation === 'portrait' ? DEFAULT_PORTRAIT_ELEMENTS : DEFAULT_LANDSCAPE_ELEMENTS),
+          ...imported.elements
+        };
+        setElements(mergedElements);
+
+        const savedTemplatesStr = localStorage.getItem('id-templates') || '[]';
+        const savedTemplates = JSON.parse(savedTemplatesStr) as CustomTemplateConfig[];
+        
+        const newTemplate: CustomTemplateConfig = {
+          id: `custom-${Date.now()}`,
+          name: imported.name,
+          orientation: imported.orientation,
+          themeColor: mergedElements.school?.color || '#1e3a5f',
+          frontBg: imported.frontBg || '',
+          backBg: imported.backBg || '',
+          elements: mergedElements,
+        };
+
+        const filtered = savedTemplates.filter(t => t.name !== imported.name);
+        filtered.push(newTemplate);
+        localStorage.setItem('id-templates', JSON.stringify(filtered));
+
+        alert(`Template "${imported.name}" successfully imported and saved!`);
+      } catch (err: any) {
+        alert('Invalid JSON layout template file: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+    if (e.target) e.target.value = '';
+  };
 
   // Sync default coordinates when orientation changes
   useEffect(() => {
@@ -772,6 +891,7 @@ export default function TemplateDesignerClient() {
                           textAlign: el.align,
                           fontWeight: el.bold ? 'bold' : 'normal',
                           fontStyle: el.italic ? 'italic' : 'normal',
+                          fontFamily: el.fontFamily ? `'${el.fontFamily}', sans-serif` : "'Outfit', sans-serif",
                         }}
                       >
                         {key === 'school' ? 'ACADEMY NAME' : 
@@ -893,6 +1013,25 @@ export default function TemplateDesignerClient() {
                     </div>
 
                     <div className="flex flex-col gap-1.5 mt-1">
+                      <label className="text-[8px] text-zinc-500 uppercase">Font Family</label>
+                      <select
+                        value={elements[selectedField].fontFamily || 'Outfit'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          loadGoogleFont(val);
+                          updateFieldProperty(selectedField, 'fontFamily', val);
+                        }}
+                        className="w-full bg-zinc-950 border border-zinc-900 rounded px-2.5 py-1.5 text-[10.5px] text-zinc-300 font-bold focus:outline-none focus:border-zinc-700 font-sans"
+                      >
+                        {PREMIUM_FONTS.map(font => (
+                          <option key={font} value={font} style={{ fontFamily: font }}>
+                            {font}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 mt-1">
                       <label className="text-[8px] text-zinc-500 uppercase">Text Color</label>
                       <div className="flex gap-2">
                         <input
@@ -1002,6 +1141,32 @@ export default function TemplateDesignerClient() {
             >
               <Save className="w-3.5 h-3.5" /> SAVE CUSTOM TEMPLATE
             </button>
+
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button
+                type="button"
+                onClick={handleExportTemplate}
+                className="py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-[9px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 rounded border border-zinc-800"
+              >
+                <Download className="w-3 h-3" /> Export JSON
+              </button>
+              <button
+                type="button"
+                onClick={() => importInputRef.current?.click()}
+                className="py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-[9px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 rounded border border-zinc-800"
+              >
+                <Upload className="w-3 h-3" /> Import JSON
+              </button>
+            </div>
+            
+            <input 
+              type="file" 
+              ref={importInputRef} 
+              accept=".json" 
+              onChange={handleImportTemplate} 
+              className="hidden" 
+            />
+
             <p className="text-center text-[7.5px] text-zinc-600 uppercase">
               Will be saved to local templates list
             </p>
