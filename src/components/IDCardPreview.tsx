@@ -17,6 +17,22 @@ export function loadGoogleFont(fontName: string) {
   document.head.appendChild(link);
 }
 
+export function getAvatarStyle(data: StudentData): React.CSSProperties {
+  const adj = data.imageAdjustments || (data as any).image_adjustments;
+  if (!adj) return { objectFit: 'cover', width: '100%', height: '100%' };
+  const { zoom = 1, x = 0, y = 0, rotate = 0, brightness = 100, contrast = 100 } = adj;
+  return {
+    transform: `translate(${x}px, ${y}px) scale(${zoom}) rotate(${rotate}deg)`,
+    filter: `brightness(${brightness}%) contrast(${contrast}%)`,
+    transition: 'transform 0.1s ease-out, filter 0.1s ease-out',
+    objectFit: 'cover',
+    transformOrigin: 'center center',
+    width: '100%',
+    height: '100%',
+  };
+}
+
+
 // Reusable helper to resolve a custom template layout
 export function getCustomTemplate(data: StudentData): CustomTemplateConfig | null {
   // 1. Try to decompress from data.customTemplateConfig if present
@@ -249,7 +265,7 @@ export function CustomIDCardFace({
                 {key === 'avatar' && (
                   data.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                    <img src={data.avatar} alt="Photo" className="w-full h-full" style={getAvatarStyle(data)} crossOrigin="anonymous" />
                   ) : (
                     <div className="w-full h-full bg-[#f0f4f8] flex items-center justify-center border text-[#1e3a5f] font-bold text-[7px] uppercase">
                       PHOTO
@@ -503,7 +519,7 @@ export default function IDCardPreview({ data, isFlippedOverride, showMockupOverr
           <div className="overflow-hidden flex items-center justify-center bg-[#f0f4f8]" style={{ width: 68, height: 80, border: '2px solid #1e4d8c', borderRadius: 2 }}>
             {data.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+              <img src={data.avatar} alt="Photo" className="w-full h-full" style={getAvatarStyle(data)} crossOrigin="anonymous" />
             ) : (
               <User className="w-8 h-8" style={{ color: '#1e4d8c' }} />
             )}
@@ -679,7 +695,7 @@ export default function IDCardPreview({ data, isFlippedOverride, showMockupOverr
             }}>
               {data.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                <img src={data.avatar} alt="Photo" className="w-full h-full" style={getAvatarStyle(data)} crossOrigin="anonymous" />
               ) : (
                 <User className="w-8 h-8" style={{ color: '#e86c00' }} />
               )}
@@ -868,7 +884,7 @@ export default function IDCardPreview({ data, isFlippedOverride, showMockupOverr
           }}>
             {data.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+              <img src={data.avatar} alt="Photo" className="w-full h-full" style={getAvatarStyle(data)} crossOrigin="anonymous" />
             ) : (
               <User className="w-8 h-8" style={{ color: '#047857' }} />
             )}
@@ -1037,7 +1053,7 @@ export default function IDCardPreview({ data, isFlippedOverride, showMockupOverr
           <div className="shrink-0" style={{ width: 52, height: 64, border: '2px solid #1a3a8c', overflow: 'hidden', background: '#e8eeff' }}>
             {data.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+              <img src={data.avatar} alt="Photo" className="w-full h-full" style={getAvatarStyle(data)} crossOrigin="anonymous" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-7 h-7" style={{ color: '#1a3a8c' }} />
@@ -1211,7 +1227,7 @@ export default function IDCardPreview({ data, isFlippedOverride, showMockupOverr
           }}>
             {data.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+              <img src={data.avatar} alt="Photo" className="w-full h-full" style={getAvatarStyle(data)} crossOrigin="anonymous" />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
                 <User className="w-7 h-7" style={{ color: '#7c1030' }} />
@@ -1386,7 +1402,7 @@ export default function IDCardPreview({ data, isFlippedOverride, showMockupOverr
             <div className="overflow-hidden" style={{ width: 56, height: 70, background: '#f0f0ff' }}>
               {data.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={data.avatar} alt="Photo" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                <img src={data.avatar} alt="Photo" className="w-full h-full" style={getAvatarStyle(data)} crossOrigin="anonymous" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
                   <User className="w-7 h-7" style={{ color: '#000080' }} />

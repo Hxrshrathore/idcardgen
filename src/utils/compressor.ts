@@ -22,6 +22,14 @@ export interface StudentData {
   lanyardText?: string;
   lanyardColor?: string;
   lanyardTextColor?: string;
+  imageAdjustments?: {
+    zoom: number;
+    x: number;
+    y: number;
+    rotate: number;
+    brightness: number;
+    contrast: number;
+  };
 }
 
 export interface TemplateElement {
